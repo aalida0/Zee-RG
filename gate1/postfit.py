@@ -33,16 +33,17 @@ def charged(p, x, sc, Y):
         if brt > 0: X.setCxn(HP.Collider.LHC13, HP.Production.brtHpb, brt)
         out.append((brt, lep[2]/max(sum(lep) + tbw, 1e-300)))
     return out
-rows = []
-d = pickle.load(open('/tmp/mfilt4w_NO.pkl', 'rb')); S = d['S']; keep = {t[0] for t in pickle.load(open('/tmp/lmax_final.pkl', 'rb')) if t[4]}
-for i, r in d['res']:
-    if i not in keep: continue
-    x = S[i][1]; e = H.evaluate(list(x), 'NO'); sc = e['sc']; f, Y = H.unpack(np.array(x))
-    M = N.mnu_hg_leading(f, H.M_LEP, Y, sc['tb'], sc['m1'], sc['m2'], sc['mu']); o = N.oscillation_observables(M, 'NO')
-    m, U = N.takagi(M); k = o['masses_eV'][-1]/m[-1]
-    ch = ht.run(list(x), extra=lambda pp: charged(pp, x, sc, Y))
-    rows.append((i, bsg(sc), ch[1], ch[3][0][0], ch[3][0][1], abs(M[0, 0])*k, o['masses_eV'].min(), o['masses_eV'].sum(), e['obs']['m_beta'],
-                 o['delta_deg'] % 360, o['s23sq'], o['s12sq'], o['s13sq']))
-np.savetxt(sys.argv[1], np.array(rows), delimiter=',', comments='',
-           header='idx,BRbsg_e4,HBok_charged,BRtHpb_1,BRtaunu_1,mbb_eV,mlight_eV,summ_eV,mbeta_eV,delta_deg,s23sq,s12sq,s13sq')
-print('done', len(rows))
+if __name__ == '__main__':
+    rows = []
+    d = pickle.load(open('/tmp/mfilt4w_NO.pkl', 'rb')); S = d['S']; keep = {t[0] for t in pickle.load(open('/tmp/lmax_final.pkl', 'rb')) if t[4]}
+    for i, r in d['res']:
+        if i not in keep: continue
+        x = S[i][1]; e = H.evaluate(list(x), 'NO'); sc = e['sc']; f, Y = H.unpack(np.array(x))
+        M = N.mnu_hg_leading(f, H.M_LEP, Y, sc['tb'], sc['m1'], sc['m2'], sc['mu']); o = N.oscillation_observables(M, 'NO')
+        m, U = N.takagi(M); k = o['masses_eV'][-1]/m[-1]
+        ch = ht.run(list(x), extra=lambda pp: charged(pp, x, sc, Y))
+        rows.append((i, bsg(sc), ch[1], ch[3][0][0], ch[3][0][1], abs(M[0, 0])*k, o['masses_eV'].min(), o['masses_eV'].sum(), e['obs']['m_beta'],
+                     o['delta_deg'] % 360, o['s23sq'], o['s12sq'], o['s13sq']))
+    np.savetxt(sys.argv[1], np.array(rows), delimiter=',', comments='',
+               header='idx,BRbsg_e4,HBok_charged,BRtHpb_1,BRtaunu_1,mbb_eV,mlight_eV,summ_eV,mbeta_eV,delta_deg,s23sq,s12sq,s13sq')
+    print('done', len(rows))
