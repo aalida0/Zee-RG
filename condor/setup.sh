@@ -1,7 +1,7 @@
 #!/bin/bash
 # One-time setup on login.af.uchicago.edu. Usage: bash setup.sh   (zee_small.tar.gz must be in $HOME)
 set -e
-Z=/data/$USER/zee; mkdir -p $Z/out $Z/logs; cd $Z
+Z=$HOME/zee; mkdir -p $Z/out $Z/logs; cd $Z
 [ -d repo ] || git clone https://github.com/aalida0/Zee-RG.git repo
 (cd repo && git pull)
 tar xzf ~/zee_small.tar.gz -C $Z
