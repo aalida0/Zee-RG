@@ -53,14 +53,18 @@ def _C(g1, g2, g3):
         for i in range(3):
             C[base + i] = g1**2 * y**2 + g2**2 * c2 + g3**2 * c3
     return C
-def _top_tensor(yt):
+def _top_tensor(yt, rho=0.0):
     Tt = np.zeros((5, NF, NF), complex)
+    if rho:                                                 # H2 top coupling (Phi2-free quark sector in the generic basis): rho = -yt tan(beta)
+        for c in range(3):
+            for (a, b, k, s_) in ((TC + c, TL + c, 3, 1.0), (TC + c, BL + c, 2, -1.0)):
+                Tt[k, a, b] += s_ * rho; Tt[k, b, a] += s_ * rho
     for c in range(3):                                      # t^c_c t_L,c H10 - t^c_c b_L,c H1+
         for (a, b, k, s) in ((TC + c, TL + c, 1, 1.0), (TC + c, BL + c, 0, -1.0)):
             Tt[k, a, b] += s * yt; Tt[k, b, a] += s * yt
     return Tt
-def full_Y(Y1, Y2, f, yt):
-    T, Tc = _tensor(Y1, Y2, f, yt); T = T + _top_tensor(yt)
+def full_Y(Y1, Y2, f, yt, rho=0.0):
+    T, Tc = _tensor(Y1, Y2, f, yt); T = T + _top_tensor(yt, rho)
     return _real(T, Tc)
 def pack(Y1, Y2, f, yt, g):
     return np.concatenate([Y1.ravel(), Y2.ravel(), f.ravel(), [yt], g]).view(float) if False else np.concatenate([np.concatenate([Y1.ravel(), Y2.ravel(), f.ravel()]).view(float), [yt], g])
