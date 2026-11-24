@@ -6,11 +6,12 @@ Usage: ZEE_INPUTS=modern python envopt.py OBS LOGL SEED WALL_SECONDS OUTDIR
 import sys, os, json, time, pickle, numpy as np
 D = os.environ.get('ZEE_DATA', '/tmp'); R = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, R); sys.path.insert(0, os.path.join(R, 'gate1'))
-import lmax as L, m_filter_l4w as M, ht
+import lmax2 as L, m_filter_l4w as M, ht
+from zee import vac
 from m_filter_l4w import H
 obs, logL, seed, wall, out = sys.argv[1], float(sys.argv[2]), int(sys.argv[3]), float(sys.argv[4]), sys.argv[5]
 rng = np.random.default_rng(777 + 1000 * seed)
-d = pickle.load(open(D + '/mfilt4w_NO.pkl', 'rb')); S = d['S']; lm = {t[0]: t for t in pickle.load(open(D + '/lmax_final.pkl', 'rb'))}
+d = pickle.load(open(D + '/mfilt4w_NO.pkl', 'rb')); S = d['S']; lm = {t[0]: t for t in pickle.load(open(D + '/lmax_final2.pkl', 'rb'))}
 best = pickle.load(open(D + '/mbest_NO.pkl', 'rb'))[0][0]; M.LIM = best + 3.84
 HSMIN = min(t[3] for t in lm.values()); S0 = 1e-6
 lo = np.append(H.LO, -np.sqrt(4*np.pi)); hi = np.append(H.HI, np.sqrt(4*np.pi)); ZM = np.arcsinh(0.1/S0); lo[:11] = -ZM; hi[:11] = ZM
@@ -32,7 +33,7 @@ def lam_test(x, target, n0=60, nit=120):
         eta = draw(); c = build(eta)
         if ok(c):
             v = L.lam_valid(c, t0, r)
-            if v >= target - 1e-9: return v, eta
+            if v >= target - 1e-9 and vac.global_ok(c, sc, nstart=40, rng=rng)[0]: return v, eta
             pool.append((v, eta))
     if not pool: return -1.0, None
     pool.sort(key=lambda t: -t[0]); cur, eta = pool[0]; step = 0.3*(ehi - elo)
@@ -40,7 +41,7 @@ def lam_test(x, target, n0=60, nit=120):
         cand = np.clip(eta + step*rng.normal(size=6)*(rng.random(6) < .5), elo, ehi); c = build(cand)
         if not ok(c): continue
         v = L.lam_valid(c, t0, r)
-        if v >= target - 1e-9: return v, cand
+        if v >= target - 1e-9 and vac.global_ok(c, sc, nstart=40, rng=rng)[0]: return v, cand
         if v >= cur: cur, eta = v, cand
         else: step *= 0.97
     return cur, None
