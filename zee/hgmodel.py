@@ -61,8 +61,9 @@ def scalar_sector(x):
     tb = np.exp(x[11]); MHp = 10 ** x[12]; M33 = 10 ** x[13]
     mu = x[14] * np.sqrt(2) * MHp * M33 / V
     lam3, lam5, lam6 = x[15], x[16], x[17]
+    lam4 = x[18] if len(x) > 18 else 0.0   # off-slice: lambda4 free (default 0 = HG slice)
     m1sq, m2sq, phi = S.charged_spectrum(MHp**2, M33**2, mu)
-    mA2 = MHp**2 - 0.5 * V**2 * lam5
+    mA2 = MHp**2 + 0.5 * V**2 * (lam4 - lam5)
     M22 = mA2 + lam5 * V**2; M12 = lam6 * V**2
     d = M22 - MH**2
     if abs(d) < 1e-3 * V**2:
@@ -77,13 +78,13 @@ def scalar_sector(x):
     hinge = lambda v: max(0.0, v)
     masses = np.sqrt(np.array([max(m1sq, 1e-6), max(m2sq, 1e-6), max(mA2, 1e-6), max(mH2, 1e-6)]))
     pen += sum(hinge(100.0 - m) / 100.0 for m in masses)
-    pen += hinge(-lam1) + hinge(lam1 - SQ4PI) + hinge(abs(lam3) - SQ4PI) + hinge(abs(lam5) - SQ4PI)
+    pen += hinge(-lam1) + hinge(lam1 - SQ4PI) + hinge(abs(lam3) - SQ4PI) + hinge(abs(lam5) - SQ4PI) + hinge(abs(lam4) - SQ4PI)
     sq = np.sqrt(max(lam1, 0) * lam2)
-    pen += hinge(-(lam3 + sq)) + hinge(-(lam3 - abs(lam5) + sq)) + hinge(2 * abs(lam6) - ((lam1 + lam2) / 2 + lam3 + lam5))
+    pen += hinge(-(lam3 + sq)) + hinge(-(lam3 + min(lam4, 0.0) - abs(lam5) + sq)) + hinge(2 * abs(lam6) - ((lam1 + lam2) / 2 + lam3 + lam5))
     mu2sq = MHp**2 - 0.5 * V**2 * lam3
     pen += hinge(-mu2sq) / V**2
     return dict(tb=tb, mu=mu, m1=masses[0], m2=masses[1], mA=masses[2], mH=masses[3], phi=phi, sba=sba, cba=cba,
-                lam1=lam1, lam6=lam6, lam3=lam3, lam5=lam5, MHp=MHp, M33=M33, pen=pen)
+                lam1=lam1, lam6=lam6, lam3=lam3, lam4=lam4, lam5=lam5, MHp=MHp, M33=M33, pen=pen)
 
 
 def lepton_couplings(Y, sc):
