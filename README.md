@@ -54,5 +54,13 @@ Belle II tau->3mu 5e-10: 0%; h->tau mu > 1e-4: 33% / 23%. Reach numbers from the
 ## HiggsTools filter (NO, lambda4 free, 600 points)
 HS chi2 min 151.8 (SM 153.8); 1.5% of points have Delta chi2 > 3.84 from the region minimum; HiggsBounds excludes 3.2% (m_H ~ m_A ~ 320-350 GeV at tan(beta) = 0.3, ttbar searches).
 
+## Final pass (2026-11-24): full lambda4 range, IO profile, HiggsTools, tests
+- IO profile (5 seeds, 2500 samples): chi2min 29.1 vs NO 9.8 (Delta chi2 ~ 19, DESI-driven; LCDM-specific bound). IO: Br(tau->mu gamma) 4.6e-9..1.6e-8, m_A 220-440 GeV, tan(beta) ~0.3, Br(mu->e gamma) up to 2.6e-13.
+- Full lambda4 scan, NO (|lambda4| <= sqrt(4 pi), 599 pts, 30% with |lambda4| > 2): EW-BFB 62%, stable to 1e4 GeV 55%, 1e8 3.2%, 1e16 0.2%.
+  After HiggsSignals (Delta chi2 <= 3.84) + HiggsBounds: 548 pts, 311 stable to 1e4. Ranges (all / stable): Br(tau->mu gamma) 2.4e-11..1.1e-8 / 2.8e-11..9.2e-9;
+  Br(mu->e gamma) <= 1.3e-13 / 1.2e-13; CR(Al) <= 2e-15 / 1.8e-15; Br(mu->3e) <= 7.8e-16; Br(h->tau mu) <= 1.5e-3 / 1.3e-3; m_A 0.35-3.4 TeV; tan(beta) 0.3-0.71.
+  Fraction above future reach (all / stable): MEG II 6e-14 2%/2%; Mu3e II 1e-16 13%/9%; Mu2e-COMET II 1e-16 12%/14%; Belle II tau->mu gamma 1e-9 26%/21%; h->tau mu 1e-4 34%/21%.
+- Tests: `ZEE_INPUTS=hg pytest tests` (12 new tests for hgmodel, RG, BFB, Barr-Zee).
+
 ## Usage
 `ZEE_INPUTS=modern python gate1/slog.py NO 11 out.pkl`; see script headers. Scripts read/write pickles in /tmp.
