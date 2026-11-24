@@ -52,7 +52,12 @@ if not cand: cand = sorted([(i, S[i][1]) for i in lm if lm[i][4] and lm[i][2] is
 cand.sort(key=lambda t: -val(t[1])); k0 = seed % len(cand)
 t_start = time.time(); log = []
 x = None
-for j in range(len(cand)):
+ST = pickle.load(open(D + '/env_starts.pkl', 'rb')).get((obs, logL), []) if os.path.exists(D + '/env_starts.pkl') and os.environ.get('ZEE_RESTART') else []
+if ST:   # second round: restart from a verified best point of the previous round (stored witness eta)
+    v0, xs, eta0 = ST[seed % len(ST)]; x = np.array(xs, float); z = to_z(x); cur = val(x); eta0 = np.array(eta0)
+    e0 = H.evaluate(list(x), 'NO')['sc']; c0 = np.zeros(11); c0[0], c0[2], c0[3], c0[4], c0[5] = e0['lam1'], e0['lam3'], e0['lam4'], e0['lam5'], e0['lam6']; c0[1], c0[6:] = eta0[0], eta0[1:]
+    v = L.lam_valid(c0, np.log(min(e0['m1'], e0['mA'], e0['mH'])), -e0['tb'])
+for j in range(len(cand) if x is None else 0):
     i, xs = cand[(k0 + j) % len(cand)]; v, eta = lam_test(xs, logL, 100, 150)
     if eta is not None: x = np.array(xs, float); z = to_z(x); cur = val(x); eta0 = eta; break
 if x is None: json.dump({'obs': obs, 'logL': logL, 'seed': seed, 'failed': 'no start'}, open(f'{out}/env_{obs}_{logL:g}_{seed}.json', 'w')); sys.exit()
@@ -68,7 +73,7 @@ while time.time() - t_start < wall:
     except Exception: continue
     if eta is None: continue
     z = y; cur = e['obs'][obs]; nacc += 1; bestrec = dict(val=cur, x=xn.tolist(), eta=list(map(float, eta)), logLmax=float(v), chi2=float(e['chi2']), hs=float(chi))
-    if nacc % 5 == 0: json.dump(dict(obs=obs, logL=logL, seed=seed, n=n, nacc=nacc, best=bestrec), open(f'{out}/env_{obs}_{logL:g}_{seed}.json', 'w'))
+    if True: json.dump(dict(obs=obs, logL=logL, seed=seed, n=n, nacc=nacc, best=bestrec), open(f'{out}/env_{obs}_{logL:g}_{seed}.json', 'w'))
     if nacc % 20 == 0: step = float(np.clip(step*(1.2 if nacc/n > .05 else 0.8), 3e-3, .2))
 json.dump(dict(obs=obs, logL=logL, seed=seed, n=n, nacc=nacc, best=bestrec, done=True), open(f'{out}/env_{obs}_{logL:g}_{seed}.json', 'w'))
 print('done', obs, logL, seed, n, nacc, bestrec['val'])
