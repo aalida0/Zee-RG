@@ -216,6 +216,8 @@ def evaluate(x, ordering="NO", with_stu=True):
     ob["Cr_Au"] = (0.0974 * MMU**2.5) ** 2 * (abs(gLV) ** 2 + abs(gRV) ** 2) / 8.6e-18
     ob["h_tau_mu"] = O.higgs_lfv_br(1, 2, Y, tb, sc["cba"]); ob["h_tau_e"] = O.higgs_lfv_br(0, 2, Y, tb, sc["cba"])
     ob["m_ee"] = abs(M[0, 0]) * 1e9
+    # mu->3e: dipole-dominated estimate (photon penguin), Br ~ alpha/(3 pi) (ln(m_mu^2/m_e^2) - 11/4) Br(mu->e gamma); no tree-level Y_ee, Y_mu e on this slice
+    ob["mu_3e"] = ALPHA / (3 * np.pi) * (np.log(MMU**2 / ME_**2) - 11 / 4) * ob["mu_e_g"]
     ob["m_beta"] = float(np.sqrt(np.sum(abs(o["U"][0]) ** 2 * (o["masses_eV"]) ** 2)))
     ob["sum_m"] = float(np.sum(o["masses_eV"]))
     # chi2 pieces

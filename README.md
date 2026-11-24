@@ -45,5 +45,11 @@ Profile region with |lambda4| <= sqrt(4 pi): chi2min 10.1 (slice 9.8, same input
 Br(h->tau mu) up to 1.5e-3, m_A up to 3.8 TeV. Stability: EW-BFB 44%, 43% to 1e4 GeV, 2.7% to 1e8 GeV, 0 to 1e16 GeV (600 pts).
 The LFV signals and the stability cut survive freeing lambda4. Walk explored |lambda4| <~ 1.1 only (step size); full range not yet scanned.
 
+## Future-experiment reach (NO, lambda4 free, 600 profile-region points; docs/reach.png)
+mu->3e is a dipole-dominated estimate (alpha/3pi (ln(m_mu^2/m_e^2) - 11/4) Br(mu->e gamma)); Cr is the monopole term only (not validated).
+Muonium-antimuonium needs Y_emu^2 at tree level, which vanishes on this slice (not computed). Fraction of region above each future reach
+(all / stable to 1e4 GeV): MEG II 6e-14: 6% / 5%; Mu3e II 1e-16: 18% / 14%; Mu2e-COMET 1e-16: 12% / 13%; Belle II tau->mu gamma 1e-9: 24% / 26%;
+Belle II tau->3mu 5e-10: 0%; h->tau mu > 1e-4: 33% / 23%. Reach numbers from the literature (MEG II 6e-14; Mu3e 1e-15..1e-16; Mu2e/COMET 1e-16..1e-17; Belle II tau->mu gamma 1e-9), taken from search snippets, to be checked.
+
 ## Usage
 `ZEE_INPUTS=modern python gate1/slog.py NO 11 out.pkl`; see script headers. Scripts read/write pickles in /tmp.
