@@ -49,7 +49,10 @@ The LFV signals and the stability cut survive freeing lambda4. Walk explored |la
 mu->3e is a dipole-dominated estimate (alpha/3pi (ln(m_mu^2/m_e^2) - 11/4) Br(mu->e gamma)); Cr(Al) adds the dipole-dominance term alpha/3 Br (Au: alpha/2) incoherently to the HG monopole term; median CR(Al)/Br = 3.2e-3; monopole formula still unvalidated against HG.
 Muonium-antimuonium needs Y_emu^2 at tree level, which vanishes on this slice (not computed). Fraction of region above each future reach
 (all / stable to 1e4 GeV): MEG II 6e-14: 6% / 5%; Mu3e II 1e-16: 18% / 14%; Mu2e-COMET II 1e-16 (Al, CR = monopole + alpha/3 Br(mu->e gamma)): 18% / 16% (6e-17: 20% / 18%); Mu3e I 1e-15, COMET I 7e-15: 0%; Belle II tau->mu gamma 1e-9: 24% / 26%;
-Belle II tau->3mu 5e-10: 0%; h->tau mu > 1e-4: 33% / 23%. Reach numbers from the literature (MEG II 6e-14; Mu3e 1e-15..1e-16; Mu2e/COMET 1e-16..1e-17; Belle II tau->mu gamma 1e-9), (MEG II 6e-14, Mu3e I 1e-15 / II 1e-16, Mu2e/COMET II ~6e-17-1e-16, Belle II tau->mu gamma 1e-9, tau->3mu ~5e-10; checked against literature summaries, not experiment documents). Higgs signal strengths remain HG-era (open).
+Belle II tau->3mu 5e-10: 0%; h->tau mu > 1e-4: 33% / 23%. Reach numbers from the literature (MEG II 6e-14; Mu3e 1e-15..1e-16; Mu2e/COMET 1e-16..1e-17; Belle II tau->mu gamma 1e-9), (MEG II 6e-14, Mu3e I 1e-15 / II 1e-16, Mu2e/COMET II ~6e-17-1e-16, Belle II tau->mu gamma 1e-9, tau->3mu ~5e-10; checked against literature summaries, not experiment documents). Higgs signals: HiggsTools 1.3.0 (built from gitlab.com/higgsbounds/higgstools, datasets hbdataset/hsdataset; `gate1/higgstools_chi2.py`) replaces the HG-era signal-strength term for post-fit filtering: HiggsSignals chi2 (159 obs, SM = 153.8) and HiggsBounds for H, A with SM-like decays only (charged scalars not tested; missing exotic decays make limits conservative).
+
+## HiggsTools filter (NO, lambda4 free, 600 points)
+HS chi2 min 151.8 (SM 153.8); 1.5% of points have Delta chi2 > 3.84 from the region minimum; HiggsBounds excludes 3.2% (m_H ~ m_A ~ 320-350 GeV at tan(beta) = 0.3, ttbar searches).
 
 ## Usage
 `ZEE_INPUTS=modern python gate1/slog.py NO 11 out.pkl`; see script headers. Scripts read/write pickles in /tmp.

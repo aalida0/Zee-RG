@@ -1,20 +1,36 @@
-"""HiggsSignals chi2 (and HiggsBounds check) for fit points. UNTESTED here: HiggsTools is not installable in the sandbox
-(not on PyPI for py3.13; GitLab blocked). Install on a machine with access:
-  pip install higgstools ; git clone https://gitlab.com/higgsbounds/hbdataset ; git clone https://gitlab.com/higgsbounds/hsdataset
-Usage: ZEE_INPUTS=modern python gate1/higgstools_chi2.py SAMPLES.pkl HBDATASET HSDATASET OUT.pkl
-Check the API names against the HiggsTools docs before trusting results."""
 import sys, pickle, numpy as np
-sys.path.insert(0, '.')
-from zee import hgmodel as H
+sys.path.insert(0, '/home/claude/zee_fit')
 import Higgs.predictions as HP, Higgs.bounds as HB, Higgs.signals as HS
-S = pickle.load(open(sys.argv[1], 'rb')); hb = HB.Bounds(sys.argv[2]); hs = HS.Signals(sys.argv[3])
-out = []
-for c, x in S:
-    e = H.evaluate(list(x), 'NO'); sc = e['sc']; tb = sc['tb']
-    kV = sc['sba']; kt = sc['sba'] - tb * sc['cba']; ktau = e['mus']['tt'] ** 0.5 if False else None
-    p = HP.Predictions(); h = p.addParticle(HP.NeutralScalar('h', 'even')); h.setMass(125.5)
-    cp = HP.NeutralEffectiveCouplings(); cp.tt = kt; cp.bb = kt; cp.cc = kt; cp.ZZ = kV; cp.WW = kV
-    cp.tautau = H.evaluate(list(x), 'NO')['mus']['tt'] ** 0.5; cp.gg = kt; cp.gamgam = e['rgg'] ** 0.5; cp.Zgam = 1.0   # approximations: refine with loop-level kappas
-    HP.effectiveCouplingInput(h, cp, reference=HP.ReferenceModel.SMHiggsEW)
-    out.append((c, hs(p), hb(p).allowed))
-pickle.dump(out, open(sys.argv[4], 'wb'))
+from zee import hgmodel as H
+HBD, HSD = '/tmp/hbdataset', '/tmp/hsdataset'
+_b = HB.Bounds(HBD); _s = HS.Signals(HSD)
+def run(x, ordering='NO', with_bounds=True):
+    e = H.evaluate(list(x), ordering); sc = e['sc']
+    f, Y = H.unpack(np.array(x)); Lam, Dd = H.lepton_couplings(Y, sc)
+    tb, sba, cba = sc['tb'], sc['sba'], sc['cba']
+    kV = sba; kt = sba - tb * cba
+    k = lambda p, i: Lam[p][i, i].real * H.V / H.M_LEP[i]
+    p = HP.Predictions()
+    h = p.addParticle(HP.NeutralScalar('h', 'even')); h.setMass(125.5)
+    c = HP.NeutralEffectiveCouplings(); c.tt = kt; c.bb = kt; c.cc = kt; c.ss = kt; c.ZZ = kV; c.WW = kV
+    c.tautau = k('h', 2); c.mumu = k('h', 1); c.gg = kt; c.gamgam = float(np.sqrt(e['rgg'])); c.Zgam = kV
+    HP.effectiveCouplingInput(h, c, reference=HP.ReferenceModel.SMHiggsEW)
+    G = 4.1e-3
+    h.setDecayWidth('mutau', e['obs']['h_tau_mu'] * G / 2); h.setDecayWidth('etau', e['obs']['h_tau_e'] * G / 2)
+    allowed = None
+    if with_bounds:
+        for name, par, mass in (('H', 'even', sc['mH']), ('A', 'odd', sc['mA'])):
+            X = p.addParticle(HP.NeutralScalar(name, par)); X.setMass(mass); cc = HP.NeutralEffectiveCouplings()
+            if name == 'H':
+                kHt = cba + tb * sba; cc.tt = kHt; cc.bb = kHt; cc.cc = kHt; cc.ss = kHt; cc.ZZ = cba; cc.WW = cba; cc.tautau = k('H', 2); cc.mumu = k('H', 1)
+            else:
+                cc.tt = 1j * tb; cc.bb = 1j * tb; cc.cc = 1j * tb; cc.ss = 1j * tb; cc.tautau = 1j * abs(k('A', 2)); cc.mumu = 1j * abs(k('A', 1))
+            HP.effectiveCouplingInput(X, cc, reference=HP.ReferenceModel.SMHiggs)
+        r = _b(p); allowed = bool(r.allowed)
+    return float(_s(p)), allowed, e
+if __name__ == '__main__':
+    pts = pickle.load(open('/tmp/mbest_NO.pkl', 'rb'))[:1]
+    p0 = HP.Predictions(); h0 = p0.addParticle(HP.NeutralScalar('h', 'even')); h0.setMass(125.5); HP.effectiveCouplingInput(h0, HP.smLikeEffCouplings, reference='SMHiggsEW')
+    print('SM chisq', _s(p0), 'nobs', _s.observableCount())
+    for c0, x in pts:
+        chi, ok, e = run(x); print('HS chi2', chi, 'HB allowed', ok, 'old higgs chi2', e['chi_higgs'], 'kappas', e['mus'])
