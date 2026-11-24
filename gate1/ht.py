@@ -4,7 +4,7 @@ import Higgs.predictions as HP, Higgs.bounds as HB, Higgs.signals as HS
 from zee import hgmodel as H
 HBD, HSD = '/tmp/hbdataset', '/tmp/hsdataset'
 _b = HB.Bounds(HBD); _s = HS.Signals(HSD)
-def run(x, ordering='NO', with_bounds=True):
+def run(x, ordering='NO', with_bounds=True, extra=None):
     e = H.evaluate(list(x), ordering); sc = e['sc']
     f, Y = H.unpack(np.array(x)); Lam, Dd = H.lepton_couplings(Y, sc)
     tb, sba, cba = sc['tb'], sc['sba'], sc['cba']
@@ -26,7 +26,9 @@ def run(x, ordering='NO', with_bounds=True):
             else:
                 cc.tt = 1j * tb; cc.bb = 1j * tb; cc.cc = 1j * tb; cc.ss = 1j * tb; cc.tautau = 1j * abs(k('A', 2)); cc.mumu = 1j * abs(k('A', 1))
             HP.effectiveCouplingInput(X, cc, reference=HP.ReferenceModel.SMHiggs)
+        ex = extra(p) if extra else None
         r = _b(p); allowed = bool(r.allowed)
+    if extra: return float(_s(p)), allowed, e, ex
     return float(_s(p)), allowed, e
 if __name__ == '__main__':
     pts = pickle.load(open('/tmp/mbest_NO.pkl', 'rb'))[:1]

@@ -36,10 +36,20 @@ BOUNDS = {"tau_mu_g": (4.4e-8, 1.645), "tau_e_g": (3.3e-8, 1.645), "mu_e_g": (4.
           "tau_3mu": (2.1e-8, 1.645), "tau_mumue": (2.7e-8, 1.645), "Cr_Au": (7e-13, 1.645),
           "da_e": (2e-12, 1.645), "d_mu": (1e-19, 1.645), "d_e": (8.7e-29, 1.645),
           "h_tau_mu": (0.0120, 1.949), "h_tau_e": (0.0069, 1.949),
-          "m_ee": (190e-3, 1.949), "m_beta": (2.05, 1.949), "sum_m": (0.23, 1.949)}
+          "m_ee": (190e-3, 1.949), "mu_3e": (1.0e-12, 1.645), "m_beta": (2.05, 1.949), "sum_m": (0.23, 1.949)}
 KAPPA = 1.0
+KAPPA3 = 0.25  # set by calibration in tests/test_texture.py (generic trilepton normalisation)
 import os as _os
 MODERN = _os.environ.get("ZEE_INPUTS", "hg") == "modern"
+# single ingredients for the controlled reproduction of HG (ZEE_ING=osc,lfv,cr,cosmo,amu,univ); "modern" switches all on
+ING = set("osc lfv cr cosmo amu univ".split()) if MODERN else set(filter(None, _os.environ.get("ZEE_ING", "").split(",")))
+if "lfv" in ING:
+    BOUNDS.update(mu_e_g=(1.5e-13, 1.645), tau_3mu=(1.9e-8, 1.645), tau_mu_g=(4.2e-8, 1.645), h_tau_mu=(0.0018, 1.949), h_tau_e=(0.0020, 1.949))
+if "cosmo" in ING: BOUNDS.update(m_beta=(0.45, 1.949), sum_m=(0.072, 1.949))
+if "univ" in ING: UNIV["tm"] = (1.0011, 0.0014)
+if "osc" in ING:
+    from zee import nufit as _nf
+    _NF = {}
 if MODERN:  # 2025-26 inputs: MEG II, Belle II, ATLAS h->l tau, HFLAV 2023, KATRIN 2025, DESI DR2
     BOUNDS.update(mu_e_g=(1.5e-13, 1.645), tau_3mu=(1.9e-8, 1.645), tau_mu_g=(4.2e-8, 1.645),
                   h_tau_mu=(0.0018, 1.949), h_tau_e=(0.0020, 1.949), m_beta=(0.45, 1.949), sum_m=(0.072, 1.949))
@@ -53,6 +63,9 @@ def unpack(x):
     Y = np.zeros((3, 3), complex)
     Y[0, 2] = x[2]; Y[2, 2] = x[3] + 1j * x[4]; Y[2, 1] = x[5] + 1j * x[6]
     Y[2, 0] = x[7] + 1j * x[8]; Y[1, 2] = x[9] + 1j * x[10]
+    if len(x) > 19:  # relaxed texture: f_emu, Y2^{ee}, Y2^{emu}, Y2^{mue}, Y2^{mumu} (complex)
+        f[0, 1] = x[19]; f[1, 0] = -x[19]
+        Y[0, 0] = x[20] + 1j * x[21]; Y[0, 1] = x[22] + 1j * x[23]; Y[1, 0] = x[24] + 1j * x[25]; Y[1, 1] = x[26] + 1j * x[27]
     return f, Y
 
 
@@ -168,7 +181,7 @@ def evaluate(x, ordering="NO", with_stu=True):
     o = N.oscillation_observables(M, ordering)
     t = OSC[ordering]
     dd = (o["delta_deg"] - t["d"][0] + 180.) % 360. - 180.
-    if MODERN:
+    if "osc" in ING:
         if ordering not in _NF: _NF[ordering] = _nf.NuFit(ordering)
         c_ = _NF[ordering].chi2(o["s12sq"], o["s13sq"], o["s23sq"], o["dm21_eV2"], o["dm3l_eV2"], o["delta_deg"] % 360.)
         osc = np.array([np.sqrt(max(c_, 0.0))])
@@ -207,25 +220,47 @@ def evaluate(x, ordering="NO", with_stu=True):
             DRR += -0.5 / m2 * g2[p] * np.conj(Yr) * g1[p] * MMU / V
             DLR += -0.5 / m2 * g2[p] * np.conj(Yr) * np.conj(g1[p]) * MMU / V
         ob[name] = BR_TAU_LNUNU[1] * (1 / (32 * GF**2)) * (xi * abs(DLL) ** 2 + xi * abs(DRR) ** 2 + abs(DLR) ** 2 + abs(DRL) ** 2)
+    # generic tree-level l_I -> 3 l_j through h, H, A with the full coupling matrices (normalisation calibrated so that
+    # it equals the HG (3.9) expression above on the HG slice; tests/test_texture.py); used for the relaxed texture
+    def l3(I, j, xi):
+        C = np.zeros((2, 2), complex)
+        for p in ("h", "H", "A"):
+            A_ = Lam[p]; m2 = mass[p] ** 2
+            vI = (A_[j, I], np.conj(A_[I, j])); vj = (A_[j, j], np.conj(A_[j, j]))
+            for a in range(2):
+                for b in range(2): C[a, b] += vI[a] * vj[b] / m2
+        return (1 / (32 * GF**2)) * (xi * abs(C[0, 0]) ** 2 + xi * abs(C[1, 1]) ** 2 + abs(C[0, 1]) ** 2 + abs(C[1, 0]) ** 2) * KAPPA3
+    ob["tau_3mu_gen"] = BR_TAU_LNUNU[1] * l3(2, 1, 0.5); ob["tau_3mu"] = ob["tau_3mu_gen"]; ob["mu_3e_tree"] = l3(1, 0, 0.5)
     # mu-e conversion (3.24)-(3.25)
     gLV = gRV = 0
     for p in ("h", "H", "A"):
         m2 = mass[p] ** 2
         w = abs(g2[p]) ** 2 * (ALPHA / (2 * np.pi)) * (-1.0 / (9 * m2)) * (4 + 3 * np.log(MTAU**2 / m2))
-        gLV += w * Y[2, 1] * np.conj(Y[2, 0]); gRV += w * np.conj(Y[1, 2]) * Y[0, 2]
+        for k in range(3):   # internal lepton k; only k=tau on the HG slice. Log cut at max(m_k, m_mu) for light k
+            wk = w if k == 2 else abs(g2[p]) ** 2 * (ALPHA / (2 * np.pi)) * (-1.0 / (9 * m2)) * (4 + 3 * np.log(max(M_LEP[k], MMU) ** 2 / m2))
+            gLV += wk * Y[k, 1] * np.conj(Y[k, 0]); gRV += wk * np.conj(Y[1, k]) * Y[0, k]
     # Monopole (photon-penguin) coefficient. HG eq. (3.24-3.25) as printed is kept as Cr_Au_HG; an independent
     # one-loop derivation (Feynman parameters, checked numerically against the (4+3ln) loop function) gives a
     # vector coefficient C = alpha|y|^2(4+3ln)/(36 pi M^2), and Cr = V^2 C^2/(4 Gamma) (KKO normalisation,
     # checked against the dipole Cr/Br ratios 2.7e-3 Al, 3.9e-3 Au). That is gLV_HG/2 -> Cr smaller by 16.
     cr_au_hg = (0.0974 * MMU**2.5) ** 2 * (abs(gLV) ** 2 + abs(gRV) ** 2) / 8.6e-18
     ob["Cr_Au_HG"] = cr_au_hg
-    ob["Cr_Au"] = cr_au_hg / 16 + 3.9e-3 * ob["mu_e_g"] if MODERN else cr_au_hg   # hg mode reproduces HG
+    ob["Cr_Au"] = cr_au_hg / 16 + 3.9e-3 * ob["mu_e_g"] if "cr" in ING else cr_au_hg   # hg mode reproduces HG
     # Al: V_p=0.0161, Gamma_capt=0.7054e6/s -> Cr_Al = 0.51 Cr_Au(monopole); dipole ratio 2.67e-3
     ob["Cr_Al"] = 0.51 * cr_au_hg / 16 + 2.67e-3 * ob["mu_e_g"]
+    # tree-level scalar exchange (relaxed texture only: needs Y2^{e mu}, Y2^{mu e}); coherent N-bar N coupling kappa_p m_N f_N / v,
+    # f_N = 0.30, quark couplings type-I-like (HG quark sector), KKO overlaps (Al: S_p+S_n = 0.0322; Au: 0.1532), added incoherently
+    gS = np.zeros(2, complex)
+    for p, kq in (("h", sc["sba"] - tb * sc["cba"]), ("H", sc["cba"] + tb * sc["sba"])):
+        gS += np.array([Lam[p][0, 1], np.conj(Lam[p][1, 0])]) * kq * 0.939 * 0.30 / (V * mass[p] ** 2) * np.sqrt(2) / GF
+    wS = 2 * GF**2 * MMU**5 * np.sum(abs(gS) ** 2)
+    ob["Cr_Al_S"] = wS * 0.0322**2 / 4.643e-19; ob["Cr_Au_S"] = wS * 0.1532**2 / 8.6e-18
+    if "cr" in ING: ob["Cr_Au"] += ob["Cr_Au_S"]
+    ob["Cr_Al"] += ob["Cr_Al_S"]
     ob["h_tau_mu"] = O.higgs_lfv_br(1, 2, Y, tb, sc["cba"]); ob["h_tau_e"] = O.higgs_lfv_br(0, 2, Y, tb, sc["cba"])
     ob["m_ee"] = abs(M[0, 0]) * 1e9
     # mu->3e: dipole-dominated estimate (photon penguin), Br ~ alpha/(3 pi) (ln(m_mu^2/m_e^2) - 11/4) Br(mu->e gamma); no tree-level Y_ee, Y_mu e on this slice
-    ob["mu_3e"] = ALPHA / (3 * np.pi) * (np.log(MMU**2 / ME_**2) - 11 / 4) * ob["mu_e_g"]
+    ob["mu_3e"] = ALPHA / (3 * np.pi) * (np.log(MMU**2 / ME_**2) - 11 / 4) * ob["mu_e_g"] + ob["mu_3e_tree"]   # tree part vanishes on the HG slice
     ob["m_beta"] = float(np.sqrt(np.sum(abs(o["U"][0]) ** 2 * (o["masses_eV"]) ** 2)))
     ob["sum_m"] = float(np.sum(o["masses_eV"]))
     # chi2 pieces
@@ -242,7 +277,7 @@ def evaluate(x, ordering="NO", with_stu=True):
     eps = np.sqrt(2) / (GF * (np.sin(sc["phi"]) ** 2 / sc["m1"] ** 2 + np.cos(sc["phi"]) ** 2 / sc["m2"] ** 2))
     uni = {"tm": np.sqrt(1 + eps * abs(f[0, 2]) ** 2), "te": np.sqrt(1 + eps * abs(f[1, 2]) ** 2),
            "me": np.sqrt(abs(1 + eps * (abs(f[1, 2]) ** 2 - abs(f[0, 2]) ** 2)))}
-    chi_am = ((ob["das_mu"] - 3.8e-10) / 6.3e-10) ** 2 if MODERN else 0.0   # a_mu^exp - a_mu^SM(WP25)
+    chi_am = ((ob["das_mu"] - 3.8e-10) / 6.3e-10) ** 2 if "amu" in ING else 0.0   # a_mu^exp - a_mu^SM(WP25)
     chi_b["amu"] = chi_am
     chi_u = sum(((uni[k] - UNIV[k][0]) / UNIV[k][1]) ** 2 for k in uni)
     chi_stu = 0.0; stu_v = (np.nan,) * 3
@@ -266,7 +301,7 @@ def evaluate(x, ordering="NO", with_stu=True):
         res.append(3.0 * max(0.0, np.log(max(ob[k], 1e-300) / (lim / nrm))))
     res.append(3.0 * max(0.0, np.log(max(nat1, 1e-300) / (MMU * MTAU)))); res.append(3.0 * max(0.0, np.log(max(nat2, 1e-300) / (ME_ * MTAU))))
     res.append(3.0 * max(0.0, np.log(max(sc["mu"], 1e-300) / muB)))
-    res.append((ob["das_mu"] - 3.8e-10) / 6.3e-10 if MODERN else 0.0)
+    res.append((ob["das_mu"] - 3.8e-10) / 6.3e-10 if "amu" in ING else 0.0)
     res.extend([(uni[k] - UNIV[k][0]) / UNIV[k][1] for k in uni])
     if with_stu:
         res.extend(np.linalg.solve(np.linalg.cholesky(STU_COV), np.array(stu_v) - STU_C))
