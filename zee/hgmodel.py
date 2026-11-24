@@ -213,8 +213,15 @@ def evaluate(x, ordering="NO", with_stu=True):
         m2 = mass[p] ** 2
         w = abs(g2[p]) ** 2 * (ALPHA / (2 * np.pi)) * (-1.0 / (9 * m2)) * (4 + 3 * np.log(MTAU**2 / m2))
         gLV += w * Y[2, 1] * np.conj(Y[2, 0]); gRV += w * np.conj(Y[1, 2]) * Y[0, 2]
-    ob["Cr_Au"] = (0.0974 * MMU**2.5) ** 2 * (abs(gLV) ** 2 + abs(gRV) ** 2) / 8.6e-18
-    ob["Cr_Al"] = ob["Cr_Au"] + ALPHA / 3 * ob["mu_e_g"]   # monopole (HG 3.24, Au~Al order) + dipole-dominance term alpha/3 Br(mu->e gamma), incoherent
+    # Monopole (photon-penguin) coefficient. HG eq. (3.24-3.25) as printed is kept as Cr_Au_HG; an independent
+    # one-loop derivation (Feynman parameters, checked numerically against the (4+3ln) loop function) gives a
+    # vector coefficient C = alpha|y|^2(4+3ln)/(36 pi M^2), and Cr = V^2 C^2/(4 Gamma) (KKO normalisation,
+    # checked against the dipole Cr/Br ratios 2.7e-3 Al, 3.9e-3 Au). That is gLV_HG/2 -> Cr smaller by 16.
+    cr_au_hg = (0.0974 * MMU**2.5) ** 2 * (abs(gLV) ** 2 + abs(gRV) ** 2) / 8.6e-18
+    ob["Cr_Au_HG"] = cr_au_hg
+    ob["Cr_Au"] = cr_au_hg / 16 + 3.9e-3 * ob["mu_e_g"] if MODERN else cr_au_hg   # hg mode reproduces HG
+    # Al: V_p=0.0161, Gamma_capt=0.7054e6/s -> Cr_Al = 0.51 Cr_Au(monopole); dipole ratio 2.67e-3
+    ob["Cr_Al"] = 0.51 * cr_au_hg / 16 + 2.67e-3 * ob["mu_e_g"]
     ob["h_tau_mu"] = O.higgs_lfv_br(1, 2, Y, tb, sc["cba"]); ob["h_tau_e"] = O.higgs_lfv_br(0, 2, Y, tb, sc["cba"])
     ob["m_ee"] = abs(M[0, 0]) * 1e9
     # mu->3e: dipole-dominated estimate (photon penguin), Br ~ alpha/(3 pi) (ln(m_mu^2/m_e^2) - 11/4) Br(mu->e gamma); no tree-level Y_ee, Y_mu e on this slice

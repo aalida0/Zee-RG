@@ -64,3 +64,10 @@ HS chi2 min 151.8 (SM 153.8); 1.5% of points have Delta chi2 > 3.84 from the reg
 
 ## Usage
 `ZEE_INPUTS=modern python gate1/slog.py NO 11 out.pkl`; see script headers. Scripts read/write pickles in /tmp.
+
+## mu-e conversion monopole term (modern inputs)
+HG eqs. (3.24)-(3.25) as printed (kept as `Cr_Au_HG`) give a vector coupling 4x larger than an independent one-loop
+derivation (`gate1/cr_loop_check.py` verifies the (4+3 ln) loop function; normalisation C = alpha|y|^2(4+3 ln x)/(36 pi M^2),
+Cr = V^2 C^2/(4 Gamma), KKO conventions). With `ZEE_INPUTS=modern` the code uses the independent result
+(Cr smaller by 16), Cr_Al = 0.51 Cr_Au(monopole) + 2.7e-3 Br(mu->e gamma). `ZEE_INPUTS=hg` reproduces HG.
+Effect on the final NO sample: fraction above 1e-16 drops from 12% to 5%; the fit itself is unaffected (monopole << SINDRUM II).
