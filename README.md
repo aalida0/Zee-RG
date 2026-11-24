@@ -33,5 +33,11 @@ et al. (HG), JHEP04(2017)130, with HG's 2016 inputs; `ZEE_INPUTS=modern` switche
   (e.g. Br(tau->mu gamma) max 2.7e-8 vs 95% upper 2.8e-9). Mass range (NO) 2.25 TeV (NS, 300 live points) vs HG 1.7 TeV: unresolved.
 - Open: converge NS (more live points, independent runs), stability filter on weighted samples, IO NS, Cr formula, tests for hgmodel/bz/rg*.
 
+## Profile region vs nested sampling (modern inputs, NO)
+Nested sampling is not converged (300 vs 800 live points: log Z -53.4 vs -48.8, m_A 95% upper 2.2 vs 3.5 TeV); do not quote credible intervals.
+Profile region (Delta chi2 <= 3.84 above 11.4, multistart from 480 polished seeds incl. NS samples, then random walk) is stable under added seeds:
+Br(tau->mu gamma) 2e-11..1.6e-8, Br(mu->e gamma) up to 1.5e-13, Br(h->tau mu) 2.5e-10..1.6e-3, m_A 0.26..3.4 TeV, tan(beta) 0.3..0.73.
+No seed beat chi2 = 11.4, so it is the likely global minimum.
+
 ## Usage
 `ZEE_INPUTS=modern python gate1/slog.py NO 11 out.pkl`; see script headers. Scripts read/write pickles in /tmp.
