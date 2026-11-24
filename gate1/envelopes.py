@@ -3,7 +3,9 @@ dedicated Condor searches (gate1/envopt.py, checked with gate1/env_verify.py). U
 import sys, pickle, numpy as np, pandas as pd
 import matplotlib; matplotlib.use('Agg'); import matplotlib.pyplot as plt
 d = sys.argv[1]; c = pd.read_csv(d + '/figures/final_sample.csv')
-G = pickle.load(open(sys.argv[2], 'rb')); G = G[G.chiok & G.hbok & (G.dhs <= 3.84) & G.gok]
+G = pickle.load(open(sys.argv[2], 'rb')); G = G[G.chiok & G.hbok & (G.dhs <= 3.84) & G.gok].copy()
+if len(sys.argv) > 3:  # fine-grid cutoffs
+    FN = pickle.load(open(sys.argv[3], 'rb')); G['Lv'] = [FN.get(('e', f), -9.0) for f in G.f]
 obs = [('tau_mu_g', 'Br_tau_mu_gamma', r'${\rm Br}(\tau\to\mu\gamma)$', [(4.2e-8, '-'), (1e-9, '--')]),
        ('mu_e_g', 'Br_mu_e_gamma', r'${\rm Br}(\mu\to e\gamma)$', [(1.5e-13, '-'), (6e-14, '--')]),
        ('Cr_Al', 'CR_Al', r'${\rm CR}(\mu\,{\rm Al}\to e\,{\rm Al})$', [(6.1e-17, '--'), (6e-18, ':')]),

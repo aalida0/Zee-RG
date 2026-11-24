@@ -7,6 +7,9 @@ out = sys.argv[1]
 d = pickle.load(open('/tmp/mfilt4w_NO.pkl', 'rb')); res = d['res']; S = d['S']
 LM = {t[0]: t for t in pickle.load(open('/tmp/lmax_final.pkl', 'rb'))}
 L2 = {t[0]: (t[2] if (t[2] is not None and t[-1]) else -9.0) for t in pickle.load(open('/tmp/lmax_final2.pkl', 'rb'))}
+import os
+if os.path.exists('/tmp/fine_lmax.pkl'):  # cutoffs recomputed on a 10-per-decade grid (gate1/fine_lmax.py)
+    FN = pickle.load(open('/tmp/fine_lmax.pkl', 'rb')); L2 = {i: (FN.get(('s', i), -9.0) if v > -9 else -9.0) for i, v in L2.items()}
 import pandas as pd; PF = pd.read_csv('/tmp/postfit.csv').set_index('idx')
 rows = []
 for i, r in res:
@@ -32,7 +35,7 @@ ax.set_xlabel(r'${\rm Br}(\mu\to e\gamma)$'); ax.set_ylabel(r'${\rm CR}(\mu\,{\r
 fig, ax = plt.subplots(figsize=(3.6, 3.3)); ax.scatter(A[~st, 9], A[~st, 10], s=5, c='0.75', rasterized=True); ax.scatter(A[st, 9], A[st, 10], s=5, c='C0', rasterized=True); ax.scatter(A[s8, 9], A[s8, 10], s=9, c='C3', marker='s', rasterized=True)
 ax.set_xscale('log'); ax.set_xlabel(r'$m_A$ [GeV]'); ax.set_ylabel(r'$\tan\beta$'); fig.tight_layout(); fig.savefig(out + '/fig_mass.pdf', dpi=300)
 fig, ax = plt.subplots(figsize=(3.6, 3.0)); sc = [3, 4, 6, 8, 10, 12, 16]; lab = ['', r'$10^4$', r'$10^6$', r'$10^8$', r'$10^{10}$', r'$10^{12}$', r'$10^{16}$']
-ax.plot(sc, [100 * np.mean(A[:, 14] >= x) for x in sc], 'o-', label='+ unitarity, global minimum'); ax.plot(sc, [100 * np.mean(A[:, 13] >= x) for x in sc], 's--', label='BFB + $|\\lambda|<4\\pi$ only')
+ax.plot(sc, [100 * np.mean(A[:, 14] >= x) for x in sc], 'o-', label='full stability definition')
 ax.set_xticks(sc); ax.set_xticklabels(lab); ax.set_yscale('symlog', linthresh=0.1); ax.set_ylim(0, 110); ax.set_xlabel(r'cutoff $\Lambda$ [GeV]'); ax.set_ylabel(r'points stable to $\Lambda$ [\%]'); ax.legend(fontsize=7); fig.tight_layout(); fig.savefig(out + '/fig_stability.pdf', dpi=300)
 for x in sc: print(x, 100 * np.mean(A[:, 14] >= x), 100 * np.mean(A[:, 13] >= x))
 for nm, m in (('all', A[:, 0] > -1), ('stable1e4', st)): print(nm, m.sum(), A[m, 10].min(), A[m, 10].max(), A[m, 9].min(), A[m, 9].max(), A[m, 4].min(), A[m, 4].max(), A[m, 5].max(), A[m, 6].max(), A[m, 7].max(), A[m, 8].max())
