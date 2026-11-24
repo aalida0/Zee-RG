@@ -71,3 +71,7 @@ derivation (`gate1/cr_loop_check.py` verifies the (4+3 ln) loop function; normal
 Cr = V^2 C^2/(4 Gamma), KKO conventions). With `ZEE_INPUTS=modern` the code uses the independent result
 (Cr smaller by 16), Cr_Al = 0.51 Cr_Au(monopole) + 2.7e-3 Br(mu->e gamma). `ZEE_INPUTS=hg` reproduces HG.
 Effect on the final NO sample: fraction above 1e-16 drops from 12% to 5%; the fit itself is unaffected (monopole << SINDRUM II).
+
+## Envelope search on HTCondor (UChicago AF)
+`gate1/envopt.py` maximises one observable subject to a stable quartic sector up to `Lambda_min`; `condor/` holds the setup script,
+job wrapper and submit file (96 jobs: 6 cutoffs x 4 observables x 4 seeds, 3h20m each). Needs `zee_small.tar.gz` (pickles + NuFIT cache, not in git).
