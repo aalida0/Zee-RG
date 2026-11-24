@@ -20,5 +20,12 @@ done
 echo "using $PY ($($PY --version))"
 [ -d venv ] || $PY -m venv venv
 $Z/venv/bin/pip install -q --upgrade pip
-$Z/venv/bin/pip install -q numpy scipy HiggsTools
+# HiggsTools is not on PyPI: build the Python module from source (needs a C++ compiler and network access; takes several minutes)
+$Z/venv/bin/pip install -q numpy scipy pandas matplotlib requests cmake ninja scikit-build-core pybind11
+if ! $Z/venv/bin/python -c "import Higgs" 2>/dev/null; then
+  [ -d higgstools ] || git clone https://gitlab.com/higgsbounds/higgstools.git
+  (cd higgstools && (git checkout -q v1.3.0 2>/dev/null || git checkout -q 1.3.0 2>/dev/null || echo "WARNING: tag 1.3.0 not found, building the default branch"))
+  export CMAKE_BUILD_PARALLEL_LEVEL=4 PATH=$Z/venv/bin:$PATH
+  $Z/venv/bin/pip install ./higgstools
+fi
 $Z/venv/bin/python -c "import Higgs, numpy, scipy; print('env ok')"
