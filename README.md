@@ -18,7 +18,7 @@ et al. (HG), JHEP04(2017)130, with HG's 2016 inputs; `ZEE_INPUTS=modern` switche
    lambda2 = sqrt(4 pi); m_h = 125.5 GeV; lambda6 derived. Free: lambda3, lambda5, lambda6, mixing.
 2. Potential: the 1/2 multiplies lambda5 only (M12 = lambda6 v^2), as verified against HG.
 3. Neutrino masses at leading order (`mnu_hg_leading`), HG convention. Diagonal dipoles use physical normalisation (HG 3.21/3.23 differ by 2).
-4. mu-e conversion uses the monopole term only (HG 3.24-3.25); the extracted formula was garbled, so Cr is NOT validated against HG.
+4. mu-e conversion: monopole (HG 3.24-3.25, re-derived and matched with Kitano-Koike-Okada: omega = 4|C|^2 V_p^2; agrees with HG), dipole and (relaxed texture) scalar terms, added incoherently. An earlier version used omega=|C|^2V^2/4 (16x too small); fixed 2026-11-24.
 5. Higgs signal strengths are approximate (fixed SM BRs, 87/13 production split); Higgs inputs are still HG-era.
 6. Priors: signs and log-uniform |x| in [1e-12, 0.1] for f and Y2; log-uniform tan(beta) in [0.3, 50] (a guess); log10 masses in [2, 4.3]; quartics uniform.
 7. RG: one-loop (Machacek-Vaughn), rough gauge/top inputs; `rgfast` is an 11-parameter closed form matching the full tensor to ~1%, leptonic Yukawas dropped.

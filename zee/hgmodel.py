@@ -239,15 +239,14 @@ def evaluate(x, ordering="NO", with_stu=True):
         for k in range(3):   # internal lepton k; only k=tau on the HG slice. Log cut at max(m_k, m_mu) for light k
             wk = w if k == 2 else abs(g2[p]) ** 2 * (ALPHA / (2 * np.pi)) * (-1.0 / (9 * m2)) * (4 + 3 * np.log(max(M_LEP[k], MMU) ** 2 / m2))
             gLV += wk * Y[k, 1] * np.conj(Y[k, 0]); gRV += wk * np.conj(Y[1, k]) * Y[0, k]
-    # Monopole (photon-penguin) coefficient. HG eq. (3.24-3.25) as printed is kept as Cr_Au_HG; an independent
-    # one-loop derivation (Feynman parameters, checked numerically against the (4+3ln) loop function) gives a
-    # vector coefficient C = alpha|y|^2(4+3ln)/(36 pi M^2), and Cr = V^2 C^2/(4 Gamma) (KKO normalisation,
-    # checked against the dipole Cr/Br ratios 2.7e-3 Al, 3.9e-3 Au). That is gLV_HG/2 -> Cr smaller by 16.
+    # Monopole (photon-penguin) term, HG eq. (3.24)-(3.25); loop function checked numerically (gate1/cr_loop_check.py)
     cr_au_hg = (0.0974 * MMU**2.5) ** 2 * (abs(gLV) ** 2 + abs(gRV) ** 2) / 8.6e-18
     ob["Cr_Au_HG"] = cr_au_hg
-    ob["Cr_Au"] = cr_au_hg / 16 + 3.9e-3 * ob["mu_e_g"] if "cr" in ING else cr_au_hg   # hg mode reproduces HG
+    # Matching with Kitano-Koike-Okada: contact C (e gamma P mu)(p gamma p) gives omega = 4 |C|^2 V_p^2 with C = 4 pi alpha A,
+    # which reproduces HG (3.24)-(3.25) exactly (an earlier version used omega = |C|^2 V^2/4, a factor 16 too small).
+    ob["Cr_Au"] = cr_au_hg + 3.9e-3 * ob["mu_e_g"] if "cr" in ING else cr_au_hg   # "cr": add the dipole term
     # Al: V_p=0.0161, Gamma_capt=0.7054e6/s -> Cr_Al = 0.51 Cr_Au(monopole); dipole ratio 2.67e-3
-    ob["Cr_Al"] = 0.51 * cr_au_hg / 16 + 2.67e-3 * ob["mu_e_g"]
+    ob["Cr_Al"] = 0.51 * cr_au_hg + 2.67e-3 * ob["mu_e_g"]
     # tree-level scalar exchange (relaxed texture only: needs Y2^{e mu}, Y2^{mu e}); coherent N-bar N coupling kappa_p m_N f_N / v,
     # f_N = 0.30, quark couplings type-I-like (HG quark sector), KKO overlaps (Al: S_p+S_n = 0.0322; Au: 0.1532), added incoherently
     gS = np.zeros(2, complex)
