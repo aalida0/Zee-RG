@@ -214,6 +214,7 @@ def evaluate(x, ordering="NO", with_stu=True):
         w = abs(g2[p]) ** 2 * (ALPHA / (2 * np.pi)) * (-1.0 / (9 * m2)) * (4 + 3 * np.log(MTAU**2 / m2))
         gLV += w * Y[2, 1] * np.conj(Y[2, 0]); gRV += w * np.conj(Y[1, 2]) * Y[0, 2]
     ob["Cr_Au"] = (0.0974 * MMU**2.5) ** 2 * (abs(gLV) ** 2 + abs(gRV) ** 2) / 8.6e-18
+    ob["Cr_Al"] = ob["Cr_Au"] + ALPHA / 3 * ob["mu_e_g"]   # monopole (HG 3.24, Au~Al order) + dipole-dominance term alpha/3 Br(mu->e gamma), incoherent
     ob["h_tau_mu"] = O.higgs_lfv_br(1, 2, Y, tb, sc["cba"]); ob["h_tau_e"] = O.higgs_lfv_br(0, 2, Y, tb, sc["cba"])
     ob["m_ee"] = abs(M[0, 0]) * 1e9
     # mu->3e: dipole-dominated estimate (photon penguin), Br ~ alpha/(3 pi) (ln(m_mu^2/m_e^2) - 11/4) Br(mu->e gamma); no tree-level Y_ee, Y_mu e on this slice
@@ -234,7 +235,7 @@ def evaluate(x, ordering="NO", with_stu=True):
     eps = np.sqrt(2) / (GF * (np.sin(sc["phi"]) ** 2 / sc["m1"] ** 2 + np.cos(sc["phi"]) ** 2 / sc["m2"] ** 2))
     uni = {"tm": np.sqrt(1 + eps * abs(f[0, 2]) ** 2), "te": np.sqrt(1 + eps * abs(f[1, 2]) ** 2),
            "me": np.sqrt(abs(1 + eps * (abs(f[1, 2]) ** 2 - abs(f[0, 2]) ** 2)))}
-    chi_am = ((ob["das_mu"] - 3.7e-10) / 6.4e-10) ** 2 if MODERN else 0.0   # a_mu^exp - a_mu^SM(WP25)
+    chi_am = ((ob["das_mu"] - 3.8e-10) / 6.3e-10) ** 2 if MODERN else 0.0   # a_mu^exp - a_mu^SM(WP25)
     chi_b["amu"] = chi_am
     chi_u = sum(((uni[k] - UNIV[k][0]) / UNIV[k][1]) ** 2 for k in uni)
     chi_stu = 0.0; stu_v = (np.nan,) * 3
@@ -258,7 +259,7 @@ def evaluate(x, ordering="NO", with_stu=True):
         res.append(3.0 * max(0.0, np.log(max(ob[k], 1e-300) / (lim / nrm))))
     res.append(3.0 * max(0.0, np.log(max(nat1, 1e-300) / (MMU * MTAU)))); res.append(3.0 * max(0.0, np.log(max(nat2, 1e-300) / (ME_ * MTAU))))
     res.append(3.0 * max(0.0, np.log(max(sc["mu"], 1e-300) / muB)))
-    res.append((ob["das_mu"] - 3.7e-10) / 6.4e-10 if MODERN else 0.0)
+    res.append((ob["das_mu"] - 3.8e-10) / 6.3e-10 if MODERN else 0.0)
     res.extend([(uni[k] - UNIV[k][0]) / UNIV[k][1] for k in uni])
     if with_stu:
         res.extend(np.linalg.solve(np.linalg.cholesky(STU_COV), np.array(stu_v) - STU_C))

@@ -24,7 +24,7 @@ et al. (HG), JHEP04(2017)130, with HG's 2016 inputs; `ZEE_INPUTS=modern` switche
 7. RG: one-loop (Machacek-Vaughn), rough gauge/top inputs; `rgfast` is an 11-parameter closed form matching the full tensor to ~1%, leptonic Yukawas dropped.
    Stability = bounded from below + perturbativity (|lambda| <= 4 pi) at each scale. Yukawa running is negligible in the HG region.
 8. Modern inputs (`ZEE_INPUTS=modern`): MEG II mu->e gamma < 1.5e-13, Belle II tau->3mu < 1.9e-8, tau->mu gamma < 4.2e-8 (Belle), ATLAS h->mu tau < 0.18%,
-   h->e tau < 0.20%, HFLAV 2023 (g_tau/g_mu) = 1.0011(14), KATRIN 0.45 eV, DESI sum m < 0.072 eV (LCDM-specific), NuFIT 6.1, Delta a_mu = 3.7(6.4)e-10 (typed from memory, unverified).
+   h->e tau < 0.20%, HFLAV 2023 (g_tau/g_mu) = 1.0011(14), KATRIN 0.45 eV, DESI sum m < 0.072 eV (LCDM-specific), NuFIT 6.1, Delta a_mu = 3.8(6.3)e-10 (WP25, arXiv:2505.21476).
 
 ## Status (2026-11-24)
 - Best fits, modern inputs: chi2min NO 11.4, IO 33.6 (IO disfavoured by ~22, mostly DESI sum m).
@@ -46,10 +46,10 @@ Br(h->tau mu) up to 1.5e-3, m_A up to 3.8 TeV. Stability: EW-BFB 44%, 43% to 1e4
 The LFV signals and the stability cut survive freeing lambda4. Walk explored |lambda4| <~ 1.1 only (step size); full range not yet scanned.
 
 ## Future-experiment reach (NO, lambda4 free, 600 profile-region points; docs/reach.png)
-mu->3e is a dipole-dominated estimate (alpha/3pi (ln(m_mu^2/m_e^2) - 11/4) Br(mu->e gamma)); Cr is the monopole term only (not validated).
+mu->3e is a dipole-dominated estimate (alpha/3pi (ln(m_mu^2/m_e^2) - 11/4) Br(mu->e gamma)); Cr(Al) adds the dipole-dominance term alpha/3 Br (Au: alpha/2) incoherently to the HG monopole term; median CR(Al)/Br = 3.2e-3; monopole formula still unvalidated against HG.
 Muonium-antimuonium needs Y_emu^2 at tree level, which vanishes on this slice (not computed). Fraction of region above each future reach
-(all / stable to 1e4 GeV): MEG II 6e-14: 6% / 5%; Mu3e II 1e-16: 18% / 14%; Mu2e-COMET 1e-16: 12% / 13%; Belle II tau->mu gamma 1e-9: 24% / 26%;
-Belle II tau->3mu 5e-10: 0%; h->tau mu > 1e-4: 33% / 23%. Reach numbers from the literature (MEG II 6e-14; Mu3e 1e-15..1e-16; Mu2e/COMET 1e-16..1e-17; Belle II tau->mu gamma 1e-9), taken from search snippets, to be checked.
+(all / stable to 1e4 GeV): MEG II 6e-14: 6% / 5%; Mu3e II 1e-16: 18% / 14%; Mu2e-COMET II 1e-16 (Al, CR = monopole + alpha/3 Br(mu->e gamma)): 18% / 16% (6e-17: 20% / 18%); Mu3e I 1e-15, COMET I 7e-15: 0%; Belle II tau->mu gamma 1e-9: 24% / 26%;
+Belle II tau->3mu 5e-10: 0%; h->tau mu > 1e-4: 33% / 23%. Reach numbers from the literature (MEG II 6e-14; Mu3e 1e-15..1e-16; Mu2e/COMET 1e-16..1e-17; Belle II tau->mu gamma 1e-9), (MEG II 6e-14, Mu3e I 1e-15 / II 1e-16, Mu2e/COMET II ~6e-17-1e-16, Belle II tau->mu gamma 1e-9, tau->3mu ~5e-10; checked against literature summaries, not experiment documents). Higgs signal strengths remain HG-era (open).
 
 ## Usage
 `ZEE_INPUTS=modern python gate1/slog.py NO 11 out.pkl`; see script headers. Scripts read/write pickles in /tmp.
