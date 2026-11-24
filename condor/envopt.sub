@@ -1,9 +1,9 @@
 universe = vanilla
 executable = job.sh
 arguments = $(obs) $(logL) $(seed) 12000
-output = $ENV(HOME)/zee/logs/out.$(obs).$(logL).$(seed)
-error = $ENV(HOME)/zee/logs/err.$(obs).$(logL).$(seed)
-log = $ENV(HOME)/zee/logs/log.envopt
+output = $ENV(HOME)/zee_env/logs/out.$(obs).$(logL).$(seed)
+error = $ENV(HOME)/zee_env/logs/err.$(obs).$(logL).$(seed)
+log = $ENV(HOME)/zee_env/logs/log.envopt
 should_transfer_files = YES
 when_to_transfer_output = ON_EXIT
 transfer_input_files = job.sh

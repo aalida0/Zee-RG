@@ -1,6 +1,6 @@
 #!/bin/bash
 # args: OBS LOGL SEED WALL
-Z=$HOME/zee
+Z=$HOME/zee_env
 export ZEE_INPUTS=modern ZEE_DATA=$Z/zee_data
 ln -sfn $Z/zee_data/hbdataset /tmp/hbdataset; ln -sfn $Z/zee_data/hsdataset /tmp/hsdataset
 cd $Z/repo
