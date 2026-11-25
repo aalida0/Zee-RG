@@ -31,6 +31,8 @@
   ],
   "accepted": true,
   "status": "PASS",
+  "low_energy_vacuum_status": "PASS",
+  "rg_status": "ok",
   "certified_log10_scale": 11.599321147516838,
   "scope": "one-loop, tree-level-boundary scalar-consistency estimate (not a UV-completion scale)",
   "a_status": "PASS",
@@ -103,6 +105,7 @@
    "lim_m_beta": true,
    "lim_sum_m": true,
    "hw_variants": true,
+   "yukawa_perturbative": true,
    "bsgamma": true,
    "DY": true,
    "HB": true,
@@ -282,13 +285,13 @@
    "HB_most_sensitive": "{'A': <Higgs.bounds.AppliedLimit limitId: 1911102671, obsRatio: 0.376, expRatio: 0.363, for: [\"A\", \"H\"]>, 'H': <Higgs.bounds.AppliedLimit limitId: 1911102671, obsRatio: 0.376, expRatio: 0.363, for: [\"",
    "HB_limits": {
     "A": {
-     "obsRatio": 0.37568594982699144,
-     "expRatio": 0.36325166741848314,
+     "obsRatio": 0.37567541004740995,
+     "expRatio": 0.3632415109767775,
      "limitId": 1911102671
     },
     "H": {
-     "obsRatio": 0.37568594982699144,
-     "expRatio": 0.36325166741848314,
+     "obsRatio": 0.37567541004740995,
+     "expRatio": 0.3632415109767775,
      "limitId": 1911102671
     },
     "Hp1": {
@@ -611,9 +614,9 @@
     "min_bfb": null,
     "max_unit": 0.0,
     "max_lam": 0.0,
-    "fail": "BFB",
+    "fail": "start:BFB",
     "solver_status": -1,
-    "log10Lambda": 2.790928115934949
+    "log10Lambda": -1.0
    },
    "spec_x0.99": {
     "min_bfb": 0.09030991006814906,
@@ -627,9 +630,9 @@
     "min_bfb": null,
     "max_unit": 0.0,
     "max_lam": 0.0,
-    "fail": "BFB",
+    "fail": "start:BFB",
     "solver_status": -1,
-    "log10Lambda": 2.795113532905872
+    "log10Lambda": -1.0
    },
    "spec_x0.98": {
     "min_bfb": 0.09290620637544554,
@@ -675,7 +678,7 @@
     "ew_gradient": 2.7755575615628914e-17
    }
   },
-  "code_hash": "10f6c40ede2bc1fe"
+  "code_hash": "a274b33f42a12c90"
  },
  "BM2": {
   "x": [
@@ -709,6 +712,8 @@
   ],
   "accepted": true,
   "status": "PASS",
+  "low_energy_vacuum_status": "PASS",
+  "rg_status": "ok",
   "certified_log10_scale": 12.066796053105149,
   "scope": "one-loop, tree-level-boundary scalar-consistency estimate (not a UV-completion scale)",
   "a_status": "PASS",
@@ -781,6 +786,7 @@
    "lim_m_beta": true,
    "lim_sum_m": true,
    "hw_variants": true,
+   "yukawa_perturbative": true,
    "bsgamma": true,
    "DY": true,
    "HB": true,
@@ -957,17 +963,17 @@
    "HB_allowed": true,
    "HS_chi2": 152.96377525575917,
    "rgg": 1.0109722435930948,
-   "HB_most_sensitive": "{'A': <Higgs.bounds.AppliedLimit limitId: 1911102671, obsRatio: 0.057, expRatio: 0.046, for: [\"A\", \"H\"]>, 'H': <Higgs.bounds.AppliedLimit limitId: 1911102671, obsRatio: 0.057, expRatio: 0.046, for: [\"",
+   "HB_most_sensitive": "{'A': <Higgs.bounds.AppliedLimit limitId: 1911102671, obsRatio: 0.057, expRatio: 0.045, for: [\"A\", \"H\"]>, 'H': <Higgs.bounds.AppliedLimit limitId: 240316926, obsRatio: 0.149, expRatio: 0.170, for: [\"H",
    "HB_limits": {
     "A": {
-     "obsRatio": 0.05719223610028095,
-     "expRatio": 0.04589002132704381,
+     "obsRatio": 0.05656417303763298,
+     "expRatio": 0.04538503779892578,
      "limitId": 1911102671
     },
     "H": {
-     "obsRatio": 0.05719223610028095,
-     "expRatio": 0.04589002132704381,
-     "limitId": 1911102671
+     "obsRatio": 0.14868267213494787,
+     "expRatio": 0.1700724809389453,
+     "limitId": 240316926
     },
     "Hp1": {
      "obsRatio": 0.05243753443873799,
@@ -1289,9 +1295,9 @@
     "min_bfb": null,
     "max_unit": 0.0,
     "max_lam": 0.0,
-    "fail": "BFB",
+    "fail": "start:BFB",
     "solver_status": 0,
-    "log10Lambda": 2.759058642775991
+    "log10Lambda": -1.0
    },
    "spec_x0.99": {
     "min_bfb": 0.0703447641327852,
@@ -1305,9 +1311,9 @@
     "min_bfb": null,
     "max_unit": 0.0,
     "max_lam": 0.0,
-    "fail": "BFB",
+    "fail": "start:BFB",
     "solver_status": 0,
-    "log10Lambda": 2.7600956106787184
+    "log10Lambda": -1.0
    },
    "spec_x0.98": {
     "min_bfb": 0.088746930716956,
@@ -1353,6 +1359,6 @@
     "ew_gradient": 2.7755575615628914e-17
    }
   },
-  "code_hash": "10f6c40ede2bc1fe"
+  "code_hash": "a274b33f42a12c90"
  }
 }

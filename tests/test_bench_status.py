@@ -1,0 +1,28 @@
+import os, sys
+import numpy as np
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path[:0] = [ROOT, os.path.join(ROOT, 'gate1'), os.path.join(ROOT, 'gate2')]
+import bench
+
+
+def test_trajectory_start_failure_claims_no_scale():
+    """report v8 P5: a boundary point that already violates a condition must not return its own mass scale as a 'cutoff'"""
+    c = np.zeros(11); c[0] = -0.1; c[1] = 0.3                       # lambda1 < 0: unbounded at the boundary
+    out = bench.trajectory(c, np.log(600.0), -0.4, np.array([0.36, 0.64, 1.05, 0.88]))
+    assert out['fail'].startswith('start') and out['log10Lambda'] == -1.0
+
+
+def test_trajectory_good_point_has_valid_scale():
+    c = np.array([0.26, 0.26, 0.2, 0.1, 0.05, 0.02, 0.0, 0.1, 0.0, 0.0, 0.1])
+    out = bench.trajectory(c, np.log(600.0), -0.4, np.array([0.36, 0.64, 1.05, 0.88]))
+    assert not str(out['fail']).startswith('start') and out['log10Lambda'] > 2.78
+
+
+def test_yukawa_perturbativity_cut():
+    """Benchmarks have max Yukawa-type coupling ~0.4; scaling the lepton couplings Y2 up by 1000 violates |y| < sqrt(4 pi) and the cut sees it."""
+    import json, numpy as np
+    from zee import hgmodel as H
+    B = json.load(open(ROOT + '/results/benchmarks_input.json')); x = np.array(B['BM1']['x']); sc = H.evaluate(list(x), 'NO', eta=B['BM1']['eta'])['sc']
+    assert H.yukawa_max(x, sc) < 1.0
+    x2 = x.copy(); x2[2:11] *= 1000
+    assert H.yukawa_max(x2, sc) > H.YUK_MAX

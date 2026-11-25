@@ -108,6 +108,14 @@ def scalar_sector(x):
                 lam1=lam1, lam6=lam6, lam3=lam3, lam4=lam4, lam5=lam5, MHp=MHp, M33=M33, pen=pen)
 
 
+def yukawa_max(x, sc):
+    """Largest Yukawa-type coupling that must stay perturbative (|y| < sqrt(4 pi) ~ 3.54): lepton couplings of the neutral scalars |Dd_ij|,
+    the Zee couplings |f_ij| (charged-scalar coupling 2f) and the top coupling tan(beta) sqrt(2) m_t / v of H+."""
+    f, Y = unpack(x); Dd = lepton_couplings(Y, sc)[1]
+    return float(max(np.abs(Dd).max(), 2*np.abs(f).max(), np.sqrt(2)*sc['tb']*172.5/V))
+YUK_MAX = float(np.sqrt(4*np.pi))
+
+
 def lepton_couplings(Y, sc):
     tb, sba, cba = sc["tb"], sc["sba"], sc["cba"]
     cb = 1 / np.sqrt(1 + tb**2)

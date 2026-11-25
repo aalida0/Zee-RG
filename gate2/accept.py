@@ -61,6 +61,7 @@ def accept(x, eta, cmin, logL=None, collider=True, n_vac=80, seed=11, stop_early
             o2 = H.evaluate(list(x), 'NO', eta=eta)['obs']; hw_ok &= all(o2[k] <= lim for k, (lim, z) in H.BOUNDS.items())
         finally: DF.HW_SCALE = 1.0
     cuts['hw_variants'] = bool(hw_ok)
+    cuts['yukawa_perturbative'] = bool(H.yukawa_max(x, sc) < H.YUK_MAX)
     bpull = FL.bsg_pull(sc); cuts['bsgamma'] = bool(abs(bpull) <= FL.BSG_NSIGMA)
     rec = dict(chi2=float(e['chi2']), chi2_parts=dict(osc=e['chi_osc'], univ=e['chi_univ'], stu=e['chi_stu'], higgs=e['chi_higgs'],
                **{k: float(v) for k, v in e['chi_bounds'].items()}), obs={k: float(v) for k, v in o.items()}, sc=sc, cuts=cuts,

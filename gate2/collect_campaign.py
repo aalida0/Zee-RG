@@ -66,9 +66,20 @@ def main():
     out = sys.argv[1]; TOPK = int(sys.argv[2]) if len(sys.argv) > 2 else 10; NS = int(sys.argv[3]) if len(sys.argv) > 3 else 200; NF = int(sys.argv[4]) if len(sys.argv) > 4 else 6
     cmin = float(json.load(open(os.path.join(ROOT, 'results', 'refit_hw.json')))['best']['chi2'])
     J = [json.load(open(f)) for f in sorted(glob.glob(os.path.join(out, 'camp_*.json')))]
-    man = collections.Counter((j['manifest']['code'], j['manifest']['data'], j['manifest']['run_id'], j['manifest']['commit']) for j in J)
+    man = collections.Counter((j['manifest']['code'], j['manifest']['data'], j['manifest']['run_id'], j['manifest']['commit'],
+                               json.dumps(j['manifest'].get('env'), sort_keys=True), json.dumps(j['manifest'].get('collider_data'), sort_keys=True),
+                               json.dumps(j['manifest'].get('packages'), sort_keys=True)) for j in J)
+    envs = {json.dumps(j['manifest'].get('env'), sort_keys=True) for j in J}
+    for e_ in envs:                                       # re-verification must use the same input set as the chains
+        e_d = json.loads(e_) or {}
+        if e_d.get('ZEE_INPUTS') and e_d['ZEE_INPUTS'] != os.environ.get('ZEE_INPUTS'): sys.exit('collector ZEE_INPUTS=%s differs from the chains (%s)' % (os.environ.get('ZEE_INPUTS'), e_d['ZEE_INPUTS']))
+        if (e_d.get('ZEE_SUMM_LIMIT') or None) != (os.environ.get('ZEE_SUMM_LIMIT') or None): sys.exit('collector ZEE_SUMM_LIMIT differs from the chains (%s)' % e_d.get('ZEE_SUMM_LIMIT'))
+    import scipy as _sp
+    mm = [j['manifest'] for j in J]
+    res_env = dict(collector=dict(python=sys.version.split()[0], numpy=np.__version__, scipy=_sp.__version__),
+                   chains=sorted({(m_.get('python'), m_.get('numpy'), m_.get('scipy')) for m_ in mm}, key=str), no_collider=sum(not j.get('higgs') for j in J))
     res = dict(manifests={str(k): v for k, v in man.items()}, n_files=len(J), n_complete=sum(bool(j.get('complete')) for j in J),
-               n_dirty=sum(bool(j['manifest'].get('dirty')) for j in J), groups={}, basins={}, verified=[])
+               n_dirty=sum(bool(j['manifest'].get('dirty')) for j in J), groups={}, basins={}, verified=[], environment=res_env)
     if len(man) > 1 and not os.environ.get('ALLOW_MIXED'): sys.exit('mixed code/data/run-id/commit in %s: %s (set ALLOW_MIXED=1 to override)' % (out, dict(man)))
     for j in J:                                           # expand the proposal-indexed trace: repeated states appear with their dwell counts
         rec = {p['id']: p for p in j['points']}
@@ -77,6 +88,13 @@ def main():
         g = res['groups'].setdefault('%s|%g' % (j['mode'], j['logL']), dict(jobs=0, complete=0, prop=0, acc=0, stored=0, unique=0, wall=0.0, certs=0))
         g['jobs'] += 1; g['complete'] += bool(j.get('complete')); g['prop'] += j['n_prop']; g['acc'] += j['n_acc']; g['stored'] += len(j['series']); g['unique'] += len(j['points'])
         g['wall'] += j['wall']; g['certs'] += j.get('n_cert', 0)
+        g.setdefault('job_wall', []).append(j['wall']); g.setdefault('s_per_prop', []).append(j['wall']/max(j['n_prop'], 1))
+        g['never_in_target'] = g.get('never_in_target', 0) + (j['mode'] == 'sample' and j.get('n_post', 0) == 0)   # never finished the climb/burn-in inside the target
+        g['no_records'] = g.get('no_records', 0) + (len(j['points']) == 0 and j['mode'] == 'sample'); g['no_best'] = g.get('no_best', 0) + (j['mode'] != 'sample' and not j.get('best'))
+        g['hcoll_errors'] = g.get('hcoll_errors', 0) + sum(v for k_, v in j.get('rejects', {}).items() if k_.startswith('hcoll_error'))
+    for g in res['groups'].values():                      # time accounting: median and 95th percentile (slow nodes decide the wall budget)
+        w_ = np.array(g.pop('job_wall')); sp = np.array(g.pop('s_per_prop'))
+        g['job_wall_median'] = float(np.median(w_)); g['job_wall_p95'] = float(np.percentile(w_, 95)); g['s_per_proposal_median'] = float(np.median(sp)); g['s_per_proposal_p95'] = float(np.percentile(sp, 95))
     if os.environ.get('PLOTDIR'): make_plots(J, os.environ['PLOTDIR'])
     # sampler diagnostics per (logL, start)
     bas = collections.defaultdict(list)
@@ -90,7 +108,8 @@ def main():
             ser = [[f(p) for p in c['series']] for c in chs]
             ess = sum(len(s)/act(s) for s in ser); d['rhat_' + nm] = rhat(ser); d['ess_' + nm] = float(ess)
         d['converged'] = bool(all(d['rhat_' + n_] < 1.1 for n_ in q) and min(d['ess_' + n_] for n_ in q) >= 100)
-        for X in (10.0, 11.0, 12.0):                      # fraction of the basin with certified scale >= X (5-variant minimum)
+        d['frac_final_pass'] = float(np.mean([np.mean([p.get('final_status') == 'PASS' for p in c['series']]) for c in chs]))   # stored states that pass vacuum+collider+requested cutoff
+        for X in (10.0, 11.0, 12.0):                      # DIAGNOSTIC fraction of visited stored states with certified scale >= X (5-variant minimum), full gate not required
             per = [np.mean([p['cert']['min'] >= X for p in c['series']]) for c in chs]
             bs = [np.mean(rng.choice(per, len(per))) for _ in range(300)]
             d['frac_cert_ge_%g' % X] = dict(mean=float(np.mean(per)), lo=float(np.percentile(bs, 16)), hi=float(np.percentile(bs, 84)))

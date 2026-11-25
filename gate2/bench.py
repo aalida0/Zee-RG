@@ -36,9 +36,12 @@ def trajectory(c0, t0, r, g, n_per_dec=100, rtol=1e-8):
     out = dict(min_bfb=np.inf, max_unit=0.0, max_lam=0.0, fail=None, Lambda=LOG16, solver_status=int(s.status))
     prev = t0
     for t in grid:
-        if t > s.t[-1] + 1e-12: out.update(fail='integration', Lambda=prev); break   # solver stopped early
-        c = s.sol(t)[4:]; why, mg = fails(c, True)
+        if t > s.t[-1] + 1e-12: out.update(fail='integration', Lambda=prev, unresolved=True); break   # solver stopped early: validity only up to `prev`, no physical failure
+        zt = s.sol(t); c = zt[4:]; why, mg = fails(c, True)
+        if why is None and not np.all(np.isfinite(zt)): why = 'nonfinite'      # gauge/Yukawa couplings must be finite as well
         if why is None: vb, u, mx = mg
+        if why and t <= t0 + 1e-12:       # fails at the boundary itself: nothing was verified, no scale is claimed (report v8 P5)
+            out.update(fail='start:' + why, Lambda=-np.log(10)); break
         if why:
             lo, hi = prev, t      # bracket the first failure
             for _ in range(30):
@@ -47,7 +50,7 @@ def trajectory(c0, t0, r, g, n_per_dec=100, rtol=1e-8):
                 else: lo = mid
             out.update(fail=why, Lambda=lo); break
         out['min_bfb'] = min(out['min_bfb'], vb); out['max_unit'] = max(out['max_unit'], u); out['max_lam'] = max(out['max_lam'], mx); prev = t
-    if out['fail'] is None and prev < LOG16 - 1e-9: out.update(fail='integration', Lambda=prev)
+    if out['fail'] is None and prev < LOG16 - 1e-9: out.update(fail='integration', Lambda=prev, unresolved=True)
     out['log10Lambda'] = out.pop('Lambda')/np.log(10); return out
 def deep_vacuum(c, sc, n=2000, seed=0):
     """Deep global-minimum search (vac.global_search: analytic gradients, deterministic charge-breaking starts,

@@ -27,11 +27,13 @@ import accept as AC
 import lmax2 as L
 import cert as CE
 
-HAVE_HIGGS = False
+HAVE_HIGGS = False; HIGGS_ERR = None
 try:
     import hcoll; HAVE_HIGGS = True
-except Exception:
-    hcoll = None
+except Exception as _ex:
+    hcoll = None; HIGGS_ERR = '%s: %s' % (type(_ex).__name__, _ex)
+if os.environ.get('ZEE_REQUIRE_HIGGS') and not HAVE_HIGGS:      # production jobs: no silent fallback to 'collider not run'
+    sys.exit('HiggsTools/datasets failed to initialise (%s); refusing to run a production chain without the collider stage' % HIGGS_ERR)
 
 SQ = np.sqrt(4*np.pi); S0 = 1e-6; ZM = np.arcsinh(AC.FMAX/S0)
 LO = np.array([-ZM]*11 + [np.log(0.3), 2.0, 2.0, 0.0] + [-SQ]*4 + [-AC.ETA_MAX]*6)
@@ -51,8 +53,33 @@ _DATA_FILES = (glob.glob(os.path.join(ROOT, 'zee', '*.npz')) + glob.glob(os.path
 CODE = _hash_files(_CODE_FILES); DATA = _hash_files(_DATA_FILES)      # code and input-data hashes: the collector rejects mixed values
 
 
+def _has(n):
+    from importlib import metadata as _md
+    try: _md.version(n); return True
+    except Exception: return False
+
+
+def _tree_hash(path):
+    """identity of a data tree: git HEAD if it is a checkout, plus a hash of all relative file names and sizes"""
+    h = hashlib.sha256(); head = None
+    if os.path.isdir(path):
+        try: head = subprocess.check_output(['git', '-C', path, 'rev-parse', 'HEAD'], text=True, stderr=subprocess.DEVNULL).strip()
+        except Exception: pass
+        for r, ds, fs in sorted(os.walk(path)):
+            ds[:] = sorted(d for d in ds if d != '.git')
+            for f in sorted(fs): h.update(os.path.relpath(os.path.join(r, f), path).encode()); h.update(str(os.path.getsize(os.path.join(r, f))).encode())
+    return dict(git=head, files=h.hexdigest()[:16], exists=os.path.isdir(path))
+
+
 def manifest():
     m = dict(code=CODE, data=DATA, run_id=os.environ.get('RUN_ID', 'dev'), python=sys.version.split()[0], numpy=np.__version__)
+    m['env'] = {k: os.environ.get(k) for k in ('ZEE_INPUTS', 'ZEE_SUMM_LIMIT', 'CAMP_NPROP', 'CAMP_STORE', 'ZEE_REQUIRE_HIGGS')}
+    m['hw_scale'] = DF.HW_SCALE; m['higgs_init'] = HAVE_HIGGS; m['higgs_error'] = HIGGS_ERR
+    m['collider_data'] = {d: _tree_hash(os.path.join(os.environ.get('ZEE_DATA', ''), d)) for d in ('hbdataset', 'hsdataset')} if os.environ.get('ZEE_DATA') else {}
+    try:
+        from importlib import metadata as _md
+        m['packages'] = {n: _md.version(n) for n in ('numpy', 'scipy', 'pandas', 'matplotlib', 'higgstools', 'HiggsTools') if _has(n)}
+    except Exception: pass
     try:
         import scipy; m['scipy'] = scipy.__version__
     except Exception: pass
@@ -78,14 +105,27 @@ KEEP = ('mu_e_g', 'tau_mu_g', 'tau_e_g', 'h_tau_mu', 'd_e', 'sum_m', 'mu_3e')
 CMIN = float(json.load(open(os.path.join(ROOT, 'results', 'refit_hw.json')))['best']['chi2'])
 
 
-def stage_gate(x, eta, logL, t=None):
-    """fail-fast gate; returns (ok, info, reason).  info carries the evaluate() result and the collider dict when run."""
+def coarse_reach(info):
+    """single coarse score of a state: the minimum over the default boundary and the quartic-rescaled boundaries (x1.1, x0.9) that the gate evaluated;
+    this -- not the default reach alone -- decides whether a state is inside the target of a chain"""
+    return min([info['Lf']] + [info[k] for k in ('Lf_q1.1', 'Lf_q0.9') if k in info])
+
+
+def in_target(info, cut):
+    return coarse_reach(info) >= cut
+
+
+def stage_gate(x, eta, logL, t=None, rescaled=True):
+    """fail-fast gate; returns (ok, info, reason).  info carries the evaluate() result and the collider dict when run.
+    rescaled=True also evaluates (and requires valid starts of) the quartic-rescaled boundaries x1.1 and x0.9; info['Lmin'] is then the coarse score
+    of coarse_reach().  rescaled=False (low-energy baseline) tests only the nominal tree-level boundary."""
     if AC.in_domain(x, eta): return False, dict(), 'domain'
     e = H.evaluate(list(x), 'NO', eta=eta); sc = e['sc']; o = e['obs']; info = dict(e=e)
     # every test is written so that NaN fails it (a comparison with NaN is False)
     if not (np.isfinite(e['chi2']) and all(np.isfinite(v) for v in o.values())): return False, info, 'nonfinite'
     if not (e['chi2'] <= CMIN + AC.DCHI2) or e['pen'] != 0: return False, info, 'chi2'
     if not all(o[k] <= lim for k, (lim, z) in H.BOUNDS.items()): return False, info, 'limit'
+    if not (H.yukawa_max(x, sc) < H.YUK_MAX): return False, info, 'yukawa'
     if not (abs(FL.bsg_pull(sc)) <= FL.BSG_NSIGMA): return False, info, 'bsg'
     cbr = CB.widths_and_brs(x, eta); br = cbr['BR']
     dyr = DY.decide(cbr['m'], cbr['d'], [b['enu'] for b in br], [b['munu'] for b in br], [b['taunu'] for b in br])
@@ -98,7 +138,10 @@ def stage_gate(x, eta, logL, t=None):
             if not all(o2[k] <= lim for k, (lim, z) in H.BOUNDS.items()): return False, info, 'hw'
         finally: DF.HW_SCALE = 1.0
     if HAVE_HIGGS:
-        col, _ = hcoll.run(x, eta); info['col'] = col
+        try: col, _ = hcoll.run(x, eta)
+        except Exception as ex:                          # a numerical corner rejects the proposal and is counted, it does not abort the chain
+            info['hcoll_exc'] = type(ex).__name__; return False, info, 'hcoll_error:' + type(ex).__name__
+        info['col'] = col
         if not (col['HB_allowed'] and col['HS_chi2'] - AC.HSREF <= AC.DCHI2 and col['BR_h_tau_mu'] <= AC.H_TAU_MU and col['BR_h_tau_e'] <= AC.H_TAU_E):
             return False, info, 'higgs'
     c = AC.quartics(sc, eta); t0 = np.log(min(sc['m1'], sc['mA'], sc['mH']))
@@ -106,10 +149,11 @@ def stage_gate(x, eta, logL, t=None):
     if why in ('nonfinite', 'unitarity@start', 'BFB@start'): return False, info, 'rg_start'
     if not (Lf >= logL): return False, info, 'cutoff'
     # prefilter against the certification variants that move the reach most: boundary quartics x1.1 and x0.9 (coarse grid, ~0.05 s each)
-    for kq in (1.1, 0.9):
+    for kq in ((1.1, 0.9) if rescaled else ()):
         Lk, whyk = L.lam_valid(c * kq, t0, -sc['tb'], status=True)
         info['Lf_q%.1f' % kq] = float(Lk)
         if whyk in ('nonfinite', 'unitarity@start', 'BFB@start') or not (Lk >= logL): return False, info, 'cutoff'
+    info['Lmin'] = float(coarse_reach(info))
     return True, info, 'ok'
 
 
@@ -124,7 +168,7 @@ def full_record(x, eta, info, seed, logL=None, cs=None, cd=None):
     e = info['e']; sc = e['sc']; c = AC.quartics(sc, eta)
     g = vac.global_search(c, sc, nstart=80, rng=np.random.default_rng(seed))
     obs = {k: float(e['obs'][k]) for k in KEEP}
-    rec = dict(x=[float(v) for v in x], eta=[float(v) for v in eta], chi2=float(e['chi2']), Lf=info['Lf'], Lf_status=info['Lf_status'], obs=obs,
+    rec = dict(x=[float(v) for v in x], eta=[float(v) for v in eta], chi2=float(e['chi2']), Lf=info['Lf'], Lf_status=info['Lf_status'], Lmin=info.get('Lmin'), obs=obs,
                masses=dict(m1=float(sc['m1']), m2=float(sc['m2']), mA=float(sc['mA']), mH=float(sc['mH']),
                tb=float(sc['tb']), cba=float(sc['cba']), phi=float(sc['phi'])), dy=info['dy'], vacuum=g['status'], vacuum_status=g['status'],
                low_energy_status='PASS', collider=('run' if 'col' in info else 'not run'))
@@ -166,12 +210,15 @@ if __name__ == '__main__':
         except Exception: pass
     key = mode.split(':')[1] if mode.startswith('max:') else None
     S = starts(); si = si % len(S); x0, e0 = S[si]; zc = np.concatenate([tz(x0), e0])
-    ok, info, why = stage_gate(x0, e0, -1.0)
+    MARGIN = float(sys.argv[7]) if len(sys.argv) > 7 else 1.0       # maximiser: the walk uses logL + MARGIN as a prefilter (0 = the requested cutoff itself)
+    RESC = logL >= 0                                                 # logL < 0: low-energy baseline, nominal boundary only (no rescaled-boundary requirement)
+    ok, info, why = stage_gate(x0, e0, -1.0, rescaled=RESC)
     if not ok: sys.exit('start fails the gate: %s' % why)
-    walk_cut = logL + (1.0 if key else 0.0); climb = info['Lf'] < walk_cut; Lcur = info['Lf']     # a start below the cutoff first climbs (counts as burn-in)
+    walk_cut = logL + (MARGIN if key else 0.0)
+    Lcur = coarse_reach(info); climb = Lcur < walk_cut              # a start below the cutoff (in the coarse score of ALL boundary variants) first climbs (burn-in)
     cur = obs_of(info, key) if key else 0.0; step = 0.01; n = acc = 0; nacc_win = nwin = 0; acc_post = n_post = 0
     Lc = None; m_n = 0; m_mu = np.zeros(25); m_M2 = np.zeros((25, 25)); best = None; best_unres = None; rej = {}; t0 = time.time(); tlast = t0; ncert = 0; tcert = 0.0
-    cur_inf = info; cur_id = 0; recs = {}; trace = []; complete = False
+    cur_inf = info; cur_id = 0; recs = {}; trace = []; complete = False; bests = []
 
     def make_rec(z_, inf_, rid):
         global ncert, tcert
@@ -186,11 +233,23 @@ if __name__ == '__main__':
         with open(tmp, 'w') as fh:
             json.dump(clean(dict(mode=mode, logL=logL, seed=seed, start=si, code=CODE, manifest=MAN, cmin=CMIN, higgs=HAVE_HIGGS, complete=complete,
                        n_prop=n, n_acc=acc, nprop_target=NPROP, store_every_proposals=STORE_PROP, step=step, burn=BURN, acc_post=acc_post, n_post=n_post,
-                       n_cert=ncert, t_cert=tcert, wall=time.time()-t0, rejects=rej, points=pts, trace=trace, best=best, best_unresolved=best_unres,
+                       n_cert=ncert, t_cert=tcert, wall=time.time()-t0, rejects=rej, points=pts, trace=trace, best=best, best_unresolved=best_unres, best_archive=bests, margin=MARGIN, rescaled=RESC,
                        measure=('uniform in z on the region R_L (cheap gate + coarse cutoff); Yukawas in arcsinh(x/1e-6); stored = the current state '
                                 'every %d proposals, repeated states carry dwell counts' % STORE_PROP) if not key else 'optimiser (no stationary measure)')),
                       fh, allow_nan=False)
         os.replace(tmp, fn)
+
+    def consider_best(zz, inf_, rid):
+        """certify a candidate best and keep it (PASS -> best, UNRESOLVED -> best_unres); the last 8 improvements are archived in `bests`"""
+        global ncert, tcert, best, best_unres
+        tt = time.time(); cs_, cd_ = CE.cert(tx(zz), zz[19:]); tcert += time.time() - tt; ncert += 1
+        if cs_ < logL: return
+        r_ = full_record(tx(zz), zz[19:], inf_, seed*100000 + rid, logL, cs_, cd_)
+        if r_['final_status'] == 'PASS': best = r_; bests.append(r_); del bests[:-8]
+        elif r_['final_status'] == 'UNRESOLVED': best_unres = r_
+        else: rej['best_failed_' + r_['vacuum']] = rej.get('best_failed_' + r_['vacuum'], 0) + 1
+
+    if key and not climb: consider_best(zc, info, 0)                  # a valid start is a candidate best before any proposal is accepted
 
     while n < NPROP and time.time() - t0 < wall:
         burn = climb or n < BURN*NPROP
@@ -204,27 +263,22 @@ if __name__ == '__main__':
         if np.any(zn < LO) or np.any(zn > HI):
             rej['box'] = rej.get('box', 0) + 1; ok = False
         else:
-            ok, inf, why = stage_gate(tx(zn), zn[19:], -1.0 if climb else walk_cut)
+            ok, inf, why = stage_gate(tx(zn), zn[19:], -1.0 if climb else walk_cut, rescaled=RESC)
             if not ok: rej[why] = rej.get(why, 0) + 1
         take = ok
-        if ok and climb: take = inf['Lf'] >= Lcur                          # until the cutoff is reached only the cutoff is optimised
+        if ok and climb: take = coarse_reach(inf) >= Lcur                          # until the cutoff is reached only the cutoff is optimised
         elif ok and key:
             v = obs_of(inf, key); take = v >= cur*(1 - 0.05*rng.random())
         nwin += 1
         if take:
             zc = zn; acc += 1; nacc_win += 1; cur_id += 1; cur_inf = inf
             if climb:
-                Lcur = inf['Lf']; climb = Lcur < walk_cut
+                Lcur = coarse_reach(inf); climb = Lcur < walk_cut
             if not burn: acc_post += 1
             if key and not climb:
                 cur = obs_of(inf, key)
                 if cur > max(best['obs'][key] if best else 0.0, best_unres['obs'][key] if best_unres else 0.0)*1.02:
-                    tt = time.time(); cs, cd = CE.cert(tx(zn), zn[19:]); tcert += time.time() - tt; ncert += 1
-                    if cs >= logL:
-                        r = full_record(tx(zn), zn[19:], inf, seed*100000 + acc, logL, cs, cd)
-                        if r['final_status'] == 'PASS': best = r
-                        elif r['final_status'] == 'UNRESOLVED': best_unres = r
-                        else: rej['best_failed_' + r['vacuum']] = rej.get('best_failed_' + r['vacuum'], 0) + 1
+                    consider_best(zn, inf, acc)
         if not key and not burn:                         # proposal-indexed storage: rejected proposals repeat the current state
             n_post += 1
             if n_post % STORE_PROP == 0 and len(trace) < NMAX:

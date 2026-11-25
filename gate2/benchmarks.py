@@ -69,8 +69,12 @@ def record(name, x, eta, cmin):
     rob = {p: piece(x, eta, p) for p in PIECES}
     _, c = bench.coup(x, eta)
     reach = min(rob[p]['log10Lambda'] for p in TRAJ); vac_ok = bool(rob['vacuum']['global_ok'])
-    final = 'PASS' if (a['status'] == 'PASS' and vac_ok) else ('FAIL' if a['status'] == 'FAIL' or not vac_ok else 'UNRESOLVED')
-    return dict(x=x, eta=eta, accepted=(final == 'PASS'), status=final, certified_log10_scale=float(reach), scope='one-loop, tree-level-boundary scalar-consistency estimate (not a UV-completion scale)',
+    fails_ = {p: str(rob[p].get('fail')) for p in TRAJ}
+    start_fail = any(v.startswith('start') for v in fails_.values()); unres_rg = any(v == 'integration' for v in fails_.values()) or not np.isfinite(reach)
+    rg_status = 'start-fail' if start_fail else ('unresolved (integration/non-finite)' if unres_rg else 'ok')   # status of the RG part; 'integration' is not a physical failure
+    le_status = 'PASS' if (a['status'] == 'PASS' and vac_ok) else ('FAIL' if a['status'] == 'FAIL' or not vac_ok else 'UNRESOLVED')
+    final = 'FAIL' if (le_status == 'FAIL' or start_fail) else ('UNRESOLVED' if (le_status == 'UNRESOLVED' or unres_rg) else 'PASS')
+    return dict(x=x, eta=eta, accepted=(final == 'PASS'), status=final, low_energy_vacuum_status=le_status, rg_status=rg_status, certified_log10_scale=float(reach), scope='one-loop, tree-level-boundary scalar-consistency estimate (not a UV-completion scale)',
                 a_status=a['status'], a_unresolved=a['unresolved'], a_failed_cuts=a.get('failed_cuts'), dy=a.get('DY'), bsgamma_e4=a.get('bsgamma_e4'), cuts=a['cuts'], chi2=a['chi2'], chi2_min=cmin, chi2_parts=a['chi2_parts'],
                 Lf_scan=a['Lf'], Lf_scan_status=a['Lf_status'], vacuum_scan=a['vacuum'],
                 masses=dict(h=H.MH, H=sc['mH'], A=sc['mA'], h1p=sc['m1'], h2p=sc['m2']), tan_beta=sc['tb'], c_beta_alpha=sc['cba'],

@@ -67,3 +67,19 @@ def test_cert_reports_start_failure():
     bad = c.copy(); bad[0] = 50.0                                   # non-perturbative at the boundary
     v = CE.run(bad, np.log(min(sc['m1'], sc['mA'], sc['mH'])), -sc['tb'], CE.G0)
     assert v[0] < 0 and v[1].startswith('start:')
+
+
+def test_coarse_reach_is_minimum_over_boundary_variants():
+    """report v8 P1: a state with default reach 13 but quartic-rescaled reach 10 is NOT inside a target of 12"""
+    info = {'Lf': 13.0, 'Lf_q1.1': 10.0, 'Lf_q0.9': 14.0}
+    assert C.coarse_reach(info) == 10.0 and not C.in_target(info, 12.0) and C.in_target(info, 10.0)
+    assert C.coarse_reach({'Lf': 9.0}) == 9.0
+
+
+def test_stage_gate_enforces_all_boundary_variants_for_target():
+    """BM1: default coarse reach 11.75 but x1.1 reach 10.75: target 11 must reject (previously accepted at the start), target 10.5 accepts;
+    the low-energy baseline (rescaled=False) evaluates the nominal boundary only"""
+    x, eta = C.starts()[0]
+    ok, info, why = C.stage_gate(x, eta, 11.0); assert not ok and why == 'cutoff'
+    ok, info, why = C.stage_gate(x, eta, 10.5); assert ok and abs(info['Lmin'] - C.coarse_reach(info)) < 1e-12 and info['Lmin'] < info['Lf']
+    ok, info, why = C.stage_gate(x, eta, -1.0, rescaled=False); assert ok and 'Lf_q1.1' not in info and info['Lmin'] == info['Lf']

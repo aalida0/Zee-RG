@@ -19,19 +19,10 @@ def svw(m1, m2, mv, G):   # Gamma(S1 -> S2 V) for vertex G (p1+p2)^mu
     if m1 <= m2 + mv: return 0.0
     return G**2*lam(m1**2, m2**2, mv**2)**1.5/(16*np.pi*m1**3*mv**2)
 
-def _add_width(X, extra, p, chains):
-    """Add a partial width without a HiggsTools channel to the total width AND rescale every branching ratio of the particle:
-    setTotalWidth alone leaves br() = width/(sum of the set channel widths), so the extra channel would not reduce the BRs."""
-    keys = [d for d in (HP.Decay.enu, HP.Decay.munu, HP.Decay.taunu, HP.Decay.tb) + tuple(getattr(HP.Decay, k) for k in WD.gamma_hp_quarks(300.0, 1.0))]
-    old_t = X.totalWidth(); br_d = [(d, X.br(d)) for d in keys]
-    br_c = []
-    for ch, nn in chains:
-        try:
-            if p.particle(nn) is not None: br_c.append(((ch, nn), X.br(ch, nn)))
-        except Exception: pass
-    X.setTotalWidth(old_t + extra); f = old_t/(old_t + extra)
-    for d, b in br_d: X.setBr(d, b*f)
-    for (ch, nn), b in br_c: X.setBr(getattr(HP.ChainDecay, ch), nn, b*f)
+def _add_scalar_pair(X, other, scalar, width):
+    """Partial width X -> other + scalar through HiggsTools' scalar-pair channel: adds to the total width and rescales every other BR
+    consistently (setTotalWidth alone does not rescale the BRs), and exposes the channel to HiggsBounds (e.g. H -> h h)."""
+    X.setDecayWidth(other, scalar, float(width))
 
 
 def run(x, eta=None):
@@ -85,9 +76,9 @@ def run(x, eta=None):
     # two-body decays into scalars without a HiggsTools channel: added to the total widths (BRs of the other channels shrink)
     l7 = float(eta[1]) if eta is not None else 0.0; l8 = float(eta[2]) if eta is not None else 0.0; l10 = float(eta[4]) if eta is not None else 0.0
     out['Gamma_H_hh'] = WD.gamma_Hhh(sc, sc['mH'], 125.5, l7)
-    p.particle('H').setTotalWidth(p.particle('H').totalWidth() + out['Gamma_H_hh'])
+    _add_scalar_pair(p.particle('H'), 'h', 'h', out['Gamma_H_hh'])
     out['Gamma_h2_h1h'] = WD.gamma_h2_h1_h(sc, DF.charged_trilinears(sc, l7, l8, l10)['raw_h'])
-    _add_width(p.particle('Hp2'), out['Gamma_h2_h1h'], p, [(sc_, n_) for sc_ in ('W',) for n_ in ('h', 'H', 'A')] + [('Z', 'Hp1')])
+    _add_scalar_pair(p.particle('Hp2'), 'Hp1', 'h', out['Gamma_h2_h1h'])
     for nm in ('Hp1', 'Hp2'):
         out[nm + '_width'] = p.particle(nm).totalWidth()
         for ch, dd in (('BRenu', HP.Decay.enu), ('BRmunu', HP.Decay.munu), ('BRtaunu', HP.Decay.taunu)): out[nm + '_' + ch] = p.particle(nm).br(dd)
