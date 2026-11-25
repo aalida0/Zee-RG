@@ -13,6 +13,7 @@ import accept as AC
 ORD = os.environ.get('ORD', 'NO')   # mass ordering of the fit (NO default; IO for the ordering difference)
 S0 = 1e-6; ZM = np.arcsinh(AC.FMAX/S0); SQ = np.sqrt(4*np.pi); EB = float(os.environ.get('ETA_BOX', AC.ETA_MAX)); TAG = os.environ.get('TAG', '')   # ETA_BOX: restrict free quartics (constrained-reference sensitivity); TAG: output suffix
 LO = np.append(H.LO, -SQ)[:19].copy(); HI = np.append(H.HI, SQ)[:19].copy(); LO[:11] = -ZM; HI[:11] = ZM
+if os.environ.get('TB_FIX'): LO[11] = np.log(float(os.environ['TB_FIX'])) - 1e-9; HI[11] = np.log(float(os.environ['TB_FIX'])) + 1e-9   # profile in tan(beta): ln tan(beta) fixed (use TAG=tb<value>)
 tx = lambda z: np.concatenate([S0*np.sinh(z[:11]), z[11:19]])
 tz = lambda x: np.concatenate([np.arcsinh(np.clip(np.asarray(x[:11], float), -AC.FMAX, AC.FMAX)/S0), np.asarray(x[11:19], float)])
 XS = np.maximum(HI - LO, 1e-3)*0.1; XS[:11] = 1.0
