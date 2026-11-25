@@ -6,7 +6,7 @@ Parameter vector x (18): f_et, f_mt, Y2_et, Y2_tt(re,im), Y2_tm(re,im), Y2_te(re
   ln tb, log10 M_H+, log10 M_33, u (mu = u sqrt2 M_H+ M_33 / v), lam3, lam5, lam6.
 lam1 follows from m_h = 125.5 (eq. 2.13); lam4 = 0 gives m_A^2 = M_H+^2 - v^2 lam5 / 2.
 APPROXIMATE inputs (documented in the code): Higgs signal strengths (ATLAS+CMS Run-1 combination
-from memory, not HG's refs [105-108]); HFLAV universality treated as uncorrelated.
+from memory, not HG's refs [105-108]); HFLAV-Tau 2023 universality with its correlation matrix (MODERN; HG-era values uncorrelated).
 """
 import numpy as np
 
@@ -28,7 +28,9 @@ OSC = {"NO": dict(s12=(0.306, .012), s13=(0.02166, .00075), s23=(0.441, .027), d
                   dm3=(-2.514e-3, .041e-3), d=(277., 46.))}
 STU_C = np.array([0.05, 0.09, 0.01]); STU_S = np.array([.11, .13, .11])
 STU_COV = np.array([[1, .90, -.59], [.90, 1, -.83], [-.59, -.83, 1]]) * np.outer(STU_S, STU_S)
-UNIV = {"tm": (1.0011, 0.0015), "te": (1.0030, 0.0015), "me": (1.0018, 0.0014)}
+UNIV = {"tm": (1.0011, 0.0015), "te": (1.0030, 0.0015), "me": (1.0018, 0.0014)}   # HG-era inputs (older HFLAV); MODERN overrides
+UNIV_CORR = None
+UNIV_KEYS = ("tm", "te", "me")
 HIGGS = {"gg": (1.14, .185), "ZZ": (1.29, .245), "WW": (1.09, .17), "tt": (1.11, .23), "bb": (0.70, .28)}
 BR_SM = dict(bb=.5809, WW=.2152, gg=.0818, tt=.0627, cc=.0289, ZZ=.0264, gg_=.00227, Zg=.00154)
 # bounds: (limit, normalisation of C.L.)
@@ -53,7 +55,12 @@ if "osc" in ING:
 if MODERN:  # 2025-26 inputs: MEG II, Belle II, ATLAS h->l tau, HFLAV 2023, KATRIN 2025, DESI DR2
     BOUNDS.update(mu_e_g=(1.5e-13, 1.645), tau_3mu=(1.9e-8, 1.645), tau_mu_g=(4.2e-8, 1.645),
                   h_tau_mu=(0.0018, 1.949), h_tau_e=(0.0020, 1.949), m_beta=(0.45, 1.949), sum_m=(0.072, 1.949))
-    UNIV["tm"] = (1.0011, 0.0014)
+    # HFLAV-Tau 2023 (2411.18639; hflav-eos .../end-2023/lepton-univ.html eqs. 6-8, pure leptonic): g_tau/g_mu, g_tau/g_e, g_mu/g_e,
+    # with the Table-5 correlations (+0.67, -0.41, +0.40; transcribed from a garbled page, positive-definite, near-singular since
+    # g_mu/g_e = (g_tau/g_e)/(g_tau/g_mu)).  Keys: tm = A(tau->e)/A(mu->e) = g_tau/g_mu, te = A(tau->mu)/A(mu->e) = g_tau/g_e,
+    # me = A(tau->mu)/A(tau->e) = g_mu/g_e.
+    UNIV.update(tm=(1.0016, 0.0014), te=(1.0018, 0.0014), me=(1.0002, 0.0011))
+    UNIV_CORR = np.array([[1, .67, -.41], [.67, 1, .40], [-.41, .40, 1]])
     from zee import nufit as _nf
     _NF = {}
 
@@ -115,6 +122,12 @@ def charged_lepton_widths(f, Dd, sc):
     c, s = np.cos(sc["phi"]), np.sin(sc["phi"]); y = 2 * f
     nD = np.sum(abs(Dd) ** 2, axis=0); nf = np.sum(abs(y) ** 2, axis=0)
     return np.array([sc["m1"] / (16 * np.pi) * (c * c * nD + s * s * nf), sc["m2"] / (16 * np.pi) * (s * s * nD + c * c * nf)])
+
+
+def univ_resid(uni):
+    """whitened universality residuals (independent pulls if no correlation is set, else L^-1 (x - mu) with the HFLAV covariance)"""
+    d = np.array([(uni[k] - UNIV[k][0]) / UNIV[k][1] for k in UNIV_KEYS])
+    return d if UNIV_CORR is None else np.linalg.solve(np.linalg.cholesky(UNIV_CORR), d)
 
 
 def universality(f, sc):
@@ -308,7 +321,7 @@ def evaluate(x, ordering="NO", with_stu=True, eta=None):
     uni, ob["delta_mu_e"] = universality(f, sc)   # delta_mu_e: G_F shift from muon decay (CKM unitarity), off-slice only
     chi_am = ((ob["das_mu"] - 3.8e-10) / 6.3e-10) ** 2 if "amu" in ING else 0.0   # a_mu^exp - a_mu^SM(WP25)
     chi_b["amu"] = chi_am
-    chi_u = sum(((uni[k] - UNIV[k][0]) / UNIV[k][1]) ** 2 for k in uni)
+    chi_u = float(np.sum(univ_resid(uni) ** 2))
     chi_stu = 0.0; stu_v = (np.nan,) * 3
     if with_stu:
         stu_v = T.stu(sc["m1"], sc["m2"], sc["phi"], sc["mH"], sc["mA"], sc["cba"], mh=MH, hg_factor=True)
@@ -331,7 +344,7 @@ def evaluate(x, ordering="NO", with_stu=True, eta=None):
     res.append(np.sqrt(chi_b["nat_mu"])); res.append(np.sqrt(chi_b["nat_e"]))
     res.append(np.sqrt(chi_b["nat_mu_trilinear"]))
     res.append((ob["das_mu"] - 3.8e-10) / 6.3e-10 if "amu" in ING else 0.0)
-    res.extend([(uni[k] - UNIV[k][0]) / UNIV[k][1] for k in uni])
+    res.extend(univ_resid(uni))
     if with_stu:
         res.extend(np.linalg.solve(np.linalg.cholesky(STU_COV), np.array(stu_v) - STU_C))
     res.extend([(mus[k] - HIGGS[k][0]) / HIGGS[k][1] for k in mus])
