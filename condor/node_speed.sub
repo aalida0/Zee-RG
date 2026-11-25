@@ -1,0 +1,13 @@
+universe = vanilla
+executable = node_speed.sh
+arguments = 10
+output = $ENV(HOME)/zee_env/logs/speed.out.$(Cluster)
+error = $ENV(HOME)/zee_env/logs/speed.err.$(Cluster)
+log = $ENV(HOME)/zee_env/logs/speed.log
+should_transfer_files = YES
+when_to_transfer_output = ON_EXIT
+transfer_input_files = node_speed.sh
++queue = "short"
+request_cpus = 10
+request_memory = 8GB
+queue

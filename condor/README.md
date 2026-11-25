@@ -17,3 +17,12 @@ Each chain applies the staged gate (gate2/campaign.py); without the Higgs module
 * The collector reports split R-hat and ESS per (logL, start) basin, per-basin fractions with a chain-bootstrap interval, re-verifies with the
   full gate (HiggsTools, 200-start vacuum search, 13-variant certification) and writes `results/campaign_finalists.json` for
   `BM_INPUT=results/campaign_finalists.json BM_OUTPUT=results/campaign_bench.json python3 gate2/benchmarks.py` (100 scales/decade, 17 pieces).
+
+## Speed test and tan(beta) profile on worker nodes (writable clone)
+```
+Z=$HOME/zee_env; git clone https://github.com/aalida0/Zee-RG.git $Z/work && cp -r $Z/zee_data/_nufit_cache $Z/work/zee/   # once; later: git -C $Z/work pull
+cd $Z/work/condor
+condor_submit node_speed.sub        # prints CPU model, evaluate and gate times for 1 and 10 processes -> $Z/logs/speed.out.<cluster>
+condor_submit node_profile.sub      # 3 jobs x 3 tan(beta) values (10 cores each); results in $Z/work/results/refit_hw_tb<value>.json
+```
+`+queue = "short"` and the 23-minute wall of the campaign suggest a short wall limit: if the profile jobs are killed, submit with fewer tan(beta) values per job.

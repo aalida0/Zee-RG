@@ -1,0 +1,17 @@
+universe = vanilla
+executable = node_profile.sh
+arguments = 10 $(tbs)
+output = $ENV(HOME)/zee_env/logs/prof.out.$(Cluster).$(Process)
+error = $ENV(HOME)/zee_env/logs/prof.err.$(Cluster).$(Process)
+log = $ENV(HOME)/zee_env/logs/prof.log
+should_transfer_files = YES
+when_to_transfer_output = ON_EXIT
+transfer_input_files = node_profile.sh
++queue = "short"
+request_cpus = 10
+request_memory = 8GB
+queue tbs from (
+  0.38 0.5 0.7
+  1.0 1.5 2.0
+  3.0 5.0 10.0
+)
