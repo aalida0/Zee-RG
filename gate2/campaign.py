@@ -7,8 +7,13 @@ proposals are rejected after one 30 ms model evaluation:
                                                           collider='not run' and are UNRESOLVED until re-checked locally)
   5 RG reach Lf >= LOGL for the chain's own quartics     (lam_valid)
 The vacuum test (80 starts) and the full record are done only for the points that are STORED.
-Modes:  sample   flat target on the cheap-gate region (random walk with adaptive step): region maps, never claims
-        max:OBS  hill climb on OBS in {mu_e_g, tau_mu_g, tau_e_g, h_tau_mu} with a 5% annealing tolerance
+Modes:  sample   Metropolis random walk, symmetric Gaussian proposals, proposals outside the parameter box are REJECTED (no clipping).
+                 Stationary measure: uniform in the sampling coordinates z (Yukawas in arcsinh(x/1e-6), the other 14 parameters linear)
+                 restricted to the region R_L = {cheap gate, coarse default-input cutoff >= LOGL}.  The step adapts only during the first
+                 25% of the wall time (burn-in, discarded); afterwards it is fixed, so the chain is a valid MCMC.  Points are stored every
+                 STORE_EVERY accepted steps and each stored point is certified (gate2/cert.py: minimum over matching variants).
+        max:OBS  hill climb on OBS in {mu_e_g, tau_mu_g, tau_e_g, h_tau_mu} with a 5% annealing tolerance; the walk uses cutoff LOGL+1 as a
+                 prefilter and a new best point is recorded only if its certified scale (5 matching variants) is >= LOGL
 Usage:  ZEE_INPUTS=modern python3 -W ignore gate2/campaign.py MODE LOGL SEED WALL OUTDIR [START_INDEX]
 Output: OUTDIR/camp_<mode>_<LOGL>_<SEED>.json  (points with status, stats, timings, code hash)."""
 import sys, os, json, time, hashlib, glob
@@ -19,6 +24,7 @@ sys.path[:0] = [ROOT, os.path.join(ROOT, 'gate1'), os.path.join(ROOT, 'gate2')]
 from zee import hgmodel as H, flavour as FL, chargedbr as CB, dy as DY, dipfull as DF, vac
 import accept as AC
 import lmax2 as L
+import cert as CE
 
 HAVE_HIGGS = False
 try:
@@ -83,8 +89,13 @@ def full_record(x, eta, info, seed):
 
 
 def starts():
-    inp = json.load(open(os.path.join(ROOT, 'results', 'benchmarks_input.json')))
-    return [(np.array(v['x']), np.array(v['eta'])) for v in inp.values()]
+    """validated diverse starts (results/campaign_starts.json, built by gate2/make_starts.py + select_starts.py); BM1/BM2 as fallback"""
+    f = os.path.join(ROOT, 'results', 'campaign_starts.json')
+    src = json.load(open(f)) if os.path.exists(f) else list(json.load(open(os.path.join(ROOT, 'results', 'benchmarks_input.json'))).values())
+    return [(np.array(v['x']), np.array(v['eta'])) for v in src]
+
+
+STORE_EVERY = 40; NMAX = 400; BURN = 0.25
 
 
 if __name__ == '__main__':
@@ -92,37 +103,66 @@ if __name__ == '__main__':
     si = int(sys.argv[6]) if len(sys.argv) > 6 else seed
     os.makedirs(out, exist_ok=True); rng = np.random.default_rng(1000 + seed)
     key = mode.split(':')[1] if mode.startswith('max:') else None
-    S = starts(); x0, e0 = S[si % len(S)]; z = np.concatenate([tz(x0), e0])
-    ok, info, why = stage_gate(x0, e0, -1.0)           # the start must pass everything except the cutoff
+    S = starts(); si = si % len(S); x0, e0 = S[si]; zc = np.concatenate([tz(x0), e0])
+    ok, info, why = stage_gate(x0, e0, -1.0)
     if not ok: sys.exit('start fails the gate: %s' % why)
-    cur = obs_of(info, key) if key else 0.0; step = 0.01; n = acc = 0; nacc_win = nwin = 0
-    best = None; stored = []; rej = {}; t0 = time.time(); tlast = t0; NMAX = 300; every = 5
-    zc = z.copy(); infoc = info
+    walk_cut = logL + (1.0 if key else 0.0); climb = info['Lf'] < walk_cut; Lcur = info['Lf']     # a start below the cutoff first climbs (counts as burn-in)
+    cur = obs_of(info, key) if key else 0.0; step = 0.01; n = acc = 0; nacc_win = nwin = 0; acc_post = n_post = 0
+    Lc = None; m_n = 0; m_mu = np.zeros(25); m_M2 = np.zeros((25, 25)); best = None; stored = []; rej = {}; t0 = time.time(); tlast = t0; ncert = 0; tcert = 0.0
     def dump():
-        json.dump(dict(mode=mode, logL=logL, seed=seed, code=CODE, cmin=CMIN, higgs=HAVE_HIGGS, n_prop=n, n_acc=acc, wall=time.time()-t0,
-                       rejects=rej, points=stored, best=best), open(os.path.join(out, 'camp_%s_%g_%d.json' % (mode.replace(':', '-'), logL, seed)), 'w'))
+        json.dump(dict(mode=mode, logL=logL, seed=seed, start=si, code=CODE, cmin=CMIN, higgs=HAVE_HIGGS, n_prop=n, n_acc=acc, step=step, burn=BURN,
+                       acc_post=acc_post, n_post=n_post, n_cert=ncert, t_cert=tcert, wall=time.time()-t0, rejects=rej, points=stored, best=best,
+                       measure='uniform in z on the region R_L; Yukawas in arcsinh(x/1e-6)' if not key else 'optimiser'),
+                  open(os.path.join(out, 'camp_%s_%g_%d.json' % (mode.replace(':', '-'), logL, seed)), 'w'))
     while time.time() - t0 < wall:
-        mask = rng.random(25) < 0.3
-        if not mask.any(): mask[rng.integers(25)] = True
-        zn = np.clip(zc + rng.normal(size=25)*SPAN*step*mask, LO, HI); xn = tx(zn); en = zn[19:]; n += 1
-        ok, inf, why = stage_gate(xn, en, logL)
-        if not ok: rej[why] = rej.get(why, 0) + 1
+        burn = climb or (time.time() - t0) < BURN*wall
+        if Lc is None:                                   # isotropic start-up proposal until a covariance is available
+            mask = rng.random(25) < 0.3
+            if not mask.any(): mask[rng.integers(25)] = True
+            zn = zc + rng.normal(size=25)*SPAN*step*mask
+        else:                                            # adaptive-Metropolis proposal: learned covariance (frozen after burn-in), scale `step`
+            zn = zc + step*(Lc @ rng.normal(size=25))
+        n += 1
+        if np.any(zn < LO) or np.any(zn > HI):
+            rej['box'] = rej.get('box', 0) + 1; ok = False
+        else:
+            ok, inf, why = stage_gate(tx(zn), zn[19:], -1.0 if climb else walk_cut)
+            if not ok: rej[why] = rej.get(why, 0) + 1
         take = ok
+        if ok and climb: take = inf['Lf'] >= Lcur
         if ok and key:
             v = obs_of(inf, key); take = v >= cur*(1 - 0.05*rng.random())
+        if not burn: n_post += 1
         nwin += 1
         if take:
-            zc, infoc, acc, nacc_win = zn, inf, acc+1, nacc_win+1
-            if key: cur = obs_of(inf, key)
-            if (not key and acc % every == 0) or (key and (best is None or cur > best['obs'][key])):
-                if len(stored) < NMAX or key:
-                    r = full_record(xn, en, inf, seed*100000 + acc)
-                    if key and (best is None or cur > best['obs'][key]): best = r
-                    if not key: stored.append(r)
-                    if not key and len(stored) >= NMAX: every = 10**9
-            if not key and acc % 20 == 0 and len(stored) < NMAX: pass
-        if nwin == 50:
-            r_ = nacc_win/50; step = float(np.clip(step*(1.3 if r_ > 0.3 else 0.8 if r_ < 0.1 else 1.0), 2e-4, 0.1)); nwin = nacc_win = 0
+            zc = zn; acc += 1; nacc_win += 1
+            if climb:
+                Lcur = inf['Lf']; climb = Lcur < walk_cut
+            if not burn: acc_post += 1
+            if key:
+                cur = obs_of(inf, key)
+                if cur > (best['obs'][key] if best else 0.0)*1.02:
+                    tt = time.time(); cs, cd = CE.cert(tx(zn), zn[19:]); tcert += time.time() - tt; ncert += 1
+                    if cs >= logL:
+                        r = full_record(tx(zn), zn[19:], inf, seed*100000 + acc); r['cert'] = dict(min=cs, variants=cd); best = r
+            elif not burn and acc_post % STORE_EVERY == 0 and len(stored) < NMAX:
+                tt = time.time(); cs, cd = CE.cert(tx(zn), zn[19:]); tcert += time.time() - tt; ncert += 1
+                r = full_record(tx(zn), zn[19:], inf, seed*100000 + acc); r['cert'] = dict(min=cs, variants=cd); stored.append(r)
+        if burn:                                         # running mean/covariance of the chain states (burn-in only)
+            m_n += 1; dz = zc - m_mu; m_mu = m_mu + dz/m_n; m_M2 += np.outer(dz, zc - m_mu)
+            if m_n >= 300 and m_n % 100 == 0:
+                C_ = m_M2/(m_n - 1) + 1e-10*np.diag(SPAN**2)
+                try:
+                    L_new = np.linalg.cholesky(C_)
+                    if Lc is None: step = 2.38/np.sqrt(25)
+                    Lc = L_new
+                except np.linalg.LinAlgError: pass
+        if burn and nwin == 50:
+            r_ = nacc_win/50
+            if Lc is None: step = float(np.clip(step*(1.3 if r_ > 0.3 else 0.8 if r_ < 0.1 else 1.0), 2e-4, 0.1))
+            else: step = float(np.clip(step*(1.2 if r_ > 0.3 else 0.8 if r_ < 0.15 else 1.0), 1e-3, 2.4/np.sqrt(25)*2))
+            nwin = nacc_win = 0
         if time.time() - tlast > 120: dump(); tlast = time.time()
     dump()
-    print('done mode %s logL %g seed %d: %d proposals, %d accepted, %d stored, rejects %s, higgs=%s' % (mode, logL, seed, n, acc, len(stored), rej, HAVE_HIGGS))
+    print('done mode %s logL %g seed %d start %d: %d proposals, %d accepted (post-burn %d/%d), %d stored, %d certs (%.0fs), rejects %s, higgs=%s' %
+          (mode, logL, seed, si, n, acc, acc_post, n_post, len(stored), ncert, tcert, rej, HAVE_HIGGS))

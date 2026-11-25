@@ -79,11 +79,11 @@ def record(name, x, eta, cmin):
 
 
 if __name__ == '__main__':
-    inp = json.load(open(os.path.join(RES, 'benchmarks_input.json')))
+    inp = json.load(open(os.environ.get('BM_INPUT', os.path.join(RES, 'benchmarks_input.json'))))     # BM_INPUT/BM_OUTPUT: e.g. results/campaign_finalists.json
     cmin = float(json.load(open(os.path.join(RES, 'refit_hw.json')))['best']['chi2'])     # common refit with the production statistic (gate2/refit_hw.py)
     names = [n for n in inp if len(sys.argv) == 1 or n in sys.argv[1:]]
     out = {}
-    fn = os.path.join(RES, 'benchmarks.json')
+    fn = os.environ.get('BM_OUTPUT', os.path.join(RES, 'benchmarks.json'))
     for n in names:
         out[n] = clean(record(n, inp[n]['x'], inp[n]['eta'], cmin)); print(n, 'done', flush=True)
     json.dump(out, open(fn, 'w'), indent=1, allow_nan=False)

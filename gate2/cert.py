@@ -1,0 +1,55 @@
+"""Fast scale certification for campaign chains: the minimum over matching variants of the one-loop scale at which perturbativity,
+tree-level unitarity or boundedness first fails (same variants and boundary conditions as gate2/benchmarks.py, coarser grid:
+N_PER_DEC scales per decade with bisection of the first failure, coarse-then-refined BFB margin).  The chain value is a screening
+estimate; the claims of the paper use benchmarks.py (100 scales per decade, 17 pieces).  Usage: cert(x, eta) -> (log10 scale, dict per variant)."""
+import sys, os, numpy as np
+_R = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path[:0] = [_R, _R + '/gate1', _R + '/gate2']
+from scipy.integrate import solve_ivp
+from zee import rgfast2 as R, bfb2, vac
+import bench, lmax2 as L
+
+N_PER_DEC = 10
+VARIANTS = ('default', 'match_x0.5', 'matchH_x0.5', 'qscale_1.1', 'sm_yt_1.02')
+FULL = ('default', 'match_x0.5', 'match_x1', 'match_x2', 'matchH_x0.5', 'matchH_x1', 'matchH_x2', 'qscale_1.1', 'qscale_0.9',
+        'sm_yt_1.02', 'sm_yt_0.98', 'sm_gs_1.03', 'sm_gs_0.97')
+G0 = np.array([0.36, 0.64, 1.05, 0.88]); LOG16 = np.log(1e16)
+
+
+def _bad(c):
+    if not np.all(np.isfinite(c)): return 'nonfinite'
+    if np.abs(c).max() > 4*np.pi: return 'perturbativity'
+    if vac.unit_max(c) > 8*np.pi: return 'unitarity'
+    v = L._bfb(c)
+    return 'BFB' if v < bench.BFB_TOL else None
+
+
+def run(c, t0, r, g0):
+    s = solve_ivp(R.rhs_r(r), (t0, LOG16), np.concatenate([g0, c]), dense_output=True, rtol=1e-7, atol=1e-9)
+    grid = np.append(np.arange(t0, LOG16, np.log(10)/N_PER_DEC), LOG16); prev = t0
+    for t in grid:
+        if t > s.t[-1] + 1e-12: return prev/np.log(10), 'integration'
+        why = _bad(s.sol(t)[4:])
+        if why:
+            lo, hi = prev, t
+            for _ in range(10):
+                mid = 0.5*(lo + hi)
+                if _bad(s.sol(mid)[4:]): hi = mid
+                else: lo = mid
+            return lo/np.log(10), why
+        prev = t
+    return LOG16/np.log(10), None
+
+
+def cert(x, eta, variants=VARIANTS):
+    sc, c = bench.coup(x, eta); r = -sc['tb']; ml = min(sc['m1'], sc['mA'], sc['mH']); t0 = np.log(ml); out = {}
+    for p in variants:
+        if p == 'default': v = run(c, t0, r, G0)
+        elif p.startswith('match_'): mu0 = max(172.5, ml*float(p.split('_x')[1])); v = run(c, np.log(mu0), r, bench.sm_run(mu0))
+        elif p.startswith('matchH'): mu0 = max(172.5, max(sc['mH'], sc['mA'], sc['m2'])*float(p.split('_x')[1])); v = run(c, np.log(mu0), r, bench.sm_run(mu0))
+        elif p.startswith('qscale'): v = run(c*float(p.split('_')[1]), t0, r, G0)
+        elif p.startswith('sm_'):
+            kind, k = p.split('_')[1], float(p.split('_')[2]); g = np.array(bench.SM_MT, float); g[3 if kind == 'yt' else 2] *= k
+            v = run(c, t0, r, bench.sm_run(max(172.5, ml), start=tuple(g)))
+        out[p] = dict(log10=float(v[0]), fail=v[1])
+    return min(o['log10'] for o in out.values()), out
