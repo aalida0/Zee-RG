@@ -35,6 +35,17 @@ def rhat(chains):
     return float(np.sqrt(((n - 1)/n*W + B/n)/W)) if W > 0 else float('nan')
 
 
+def reach_class(cs, variants):
+    """classify a stored/verified reach: 'boundary_failure' (some variant violates a condition at the matching scale: no scale), 'numerical_stop' (solver stop or
+    non-finite coupling: a demonstrated PREFIX, not a first-failure scale), 'ceiling' (no failure up to 1e16 GeV), 'physical_failure' (first crossing of BFB/unitarity/perturbativity
+    found by bisection).  Only the last two are plotted on a scale axis; the sentinel -1 is never a scale."""
+    fl = [str(v['fail']) if v['fail'] is not None else None for v in variants.values()]
+    if any(f is not None and f.startswith('start') for f in fl): return 'boundary_failure'
+    if any(f in ('integration', 'nonfinite') for f in fl): return 'numerical_stop'
+    if all(f is None for f in fl): return 'ceiling'
+    return 'physical_failure'
+
+
 CATS = ((-1.5, -0.5, 'C7', 'logL=-1: nominal-boundary baseline (low-energy fit + nominal BFB/unitarity at the matching scale)'),
         (-0.5, 0.5, 'C0', 'logL=0: rescaled-boundary reference (x1.1, x0.9 also valid at the start)'),
         (5.5, 99, 'C3', 'chains requiring a cutoff of 1e6 GeV or more'))
@@ -70,7 +81,9 @@ def make_plots(J, outdir, only_pass=False):
     are kept distinct.  Re-verified points (fine grid, 13 variants) are plotted separately by make_verified_plot."""
     import matplotlib; matplotlib.use('Agg'); import matplotlib.pyplot as plt
     os.makedirs(outdir, exist_ok=True); pre = 'pass_' if only_pass else 'raw_'
-    pts = [(j['logL'], p) for j in J if j['mode'] == 'sample' for p in j['series'] if p.get('cert') and (not only_pass or p.get('final_status') == 'PASS')]
+    allp = [(j['logL'], p) for j in J if j['mode'] == 'sample' for p in j['series'] if p.get('cert') and (not only_pass or p.get('final_status') == 'PASS')]
+    cls = collections.Counter(reach_class(p['cert']['min'], p['cert']['variants']) for _, p in allp)
+    pts = [(l_, p) for l_, p in allp if reach_class(p['cert']['min'], p['cert']['variants']) in ('physical_failure', 'ceiling')]     # boundary failures and numerical stops are NOT scales
     if not pts: return
     L = np.array([a for a, _ in pts]); cert = np.array([p['cert']['min'] for _, p in pts]); tmg = np.log10([p['obs']['tau_mu_g'] for _, p in pts])
     meg = np.log10([max(p['obs']['mu_e_g'], 1e-30) for _, p in pts]); m1 = np.array([p['masses']['m1'] for _, p in pts]); cba = np.array([abs(p['masses']['cba']) for _, p in pts])
@@ -80,13 +93,13 @@ def make_plots(J, outdir, only_pass=False):
     ax[0].scatter(cert, tmg, s=5, c=L, cmap='viridis'); ax[0].axhline(-9, c='gray', ls='--', lw=0.8); ax[0].set_xlabel(xl); ax[0].set_ylabel(r'$\log_{10}\mathrm{Br}(\tau\to\mu\gamma)$')
     ax[1].scatter(cert, meg, s=5, c=L, cmap='viridis'); ax[1].axhline(np.log10(6e-14), c='gray', ls='--', lw=0.8); ax[1].set_xlabel(xl); ax[1].set_ylabel(r'$\log_{10}\mathrm{Br}(\mu\to e\gamma)$')
     sc = ax[2].scatter(cba, cert, s=5, c=L, cmap='viridis'); ax[2].set_xlabel(r'$|c_{\beta-\alpha}|$'); ax[2].set_ylabel(xl); fig.colorbar(sc, ax=ax[2], label='logL of the chain (-1, 0: baselines)')
-    fig.suptitle(what, fontsize=8); fig.tight_layout(); fig.savefig(os.path.join(outdir, pre + 'scan_lfv_cutoff.pdf')); plt.close(fig)
+    fig.suptitle(what + '; not on the axis: ' + ', '.join('%s %d' % (k, v) for k, v in sorted(cls.items()) if k in ('boundary_failure', 'numerical_stop')), fontsize=7); fig.tight_layout(); fig.savefig(os.path.join(outdir, pre + 'scan_lfv_cutoff.pdf')); plt.close(fig)
     fig, ax = plt.subplots(1, 2, figsize=(7.6, 3.0))
     for lo, hi, c, lab in CATS:
         m = (L >= lo) & (L <= hi)
         if m.any(): ax[0].scatter(m1[m], cos2[m], s=4, c=c, label=lab.split(':')[0] if lab.startswith('logL') else 'logL>=6', alpha=0.6); ax[1].hist(cert[m], bins=30, color=c, alpha=0.5)
     ax[0].set_xlabel(r'$m_{h_1^+}$ [GeV]'); ax[0].set_ylabel(r'doublet fraction $\cos^2\varphi$ of $h_1^+$'); ax[0].legend(fontsize=6, frameon=False); ax[1].set_xlabel(xl)
-    fig.suptitle(what + ': local exploration from the declared starts', fontsize=8); fig.tight_layout(); fig.savefig(os.path.join(outdir, pre + 'scan_baseline_vs_filtered.pdf')); plt.close(fig)
+    fig.suptitle(what + ': local exploration from the declared starts (reach classes: ' + ', '.join('%s %d' % kv for kv in sorted(cls.items())) + ')', fontsize=6); fig.tight_layout(); fig.savefig(os.path.join(outdir, pre + 'scan_baseline_vs_filtered.pdf')); plt.close(fig)
     if not only_pass:
         fails = collections.Counter(v['fail'] or 'none' for _, p in pts for v in p['cert']['variants'].values())
         fig, ax = plt.subplots(figsize=(4.2, 2.8)); ax.bar(list(fails), list(fails.values())); ax.set_ylabel('variant evaluations'); ax.set_title('first-failure mechanism (screening variants)', fontsize=9); plt.xticks(rotation=30, fontsize=7)
@@ -94,18 +107,27 @@ def make_plots(J, outdir, only_pass=False):
 
 
 def make_verified_plot(verified, outdir):
+    from zee import hgmodel as H
     """Re-verified points only (accept(collider=True, n_vac=200) and the 13-variant certification on the fine grid): the quantity quoted in results"""
     import matplotlib; matplotlib.use('Agg'); import matplotlib.pyplot as plt
-    good = [v for v in verified if v['meets_cutoff'] and v['certified13'] is not None and v['certified13'] > 0]
+    good = [v for v in verified if v['meets_cutoff'] and v['screen13'] is not None and v['screen13'] > 0 and v['reach_class'] in ('physical_failure', 'ceiling')]
     if not good: return
     os.makedirs(outdir, exist_ok=True); fig, ax = plt.subplots(1, 3, figsize=(10.5, 3.0))
-    for a, (k, lim) in zip(ax, (('mu_e_g', 1.5e-13), ('tau_mu_g', 4.2e-8), ('h_tau_mu', 1.8e-3))):
-        a.scatter([v['certified13'] for v in good], np.log10([max(v['obs'][k], 1e-30) for v in good]), s=8, c=[v['logL'] for v in good], cmap='viridis'); a.axhline(np.log10(lim), c='gray', ls='--', lw=0.8)
-        a.set_xlabel(r'certified $\log_{10}\Lambda$ (fine grid, 13 variants)'); a.set_ylabel(r'$\log_{10}$ ' + k)
-    fig.suptitle('re-verified points (full gate)', fontsize=8); fig.tight_layout(); fig.savefig(os.path.join(outdir, 'verified_lfv_cutoff.pdf')); plt.close(fig)
+    for a, (k, lim) in zip(ax, (('mu_e_g', 1.5e-13), ('tau_mu_g', 4.2e-8), ('h_tau_mu', H.H_TAU_MU_LIMIT))):
+        a.scatter([v['screen13'] for v in good], np.log10([max(v['obs'][k], 1e-30) for v in good]), s=8, c=[v['logL'] for v in good], cmap='viridis'); a.axhline(np.log10(lim), c='gray', ls='--', lw=0.8)
+        a.set_xlabel(r'screening reach $\log_{10}\Lambda$ (10/decade, 13 variants)'); a.set_ylabel(r'$\log_{10}$ ' + k)
+    fig.suptitle('re-verified points: full low-energy gate, 13-variant SCREENING reach (final scales come from benchmarks.py)', fontsize=7); fig.tight_layout(); fig.savefig(os.path.join(outdir, 'verified_lfv_cutoff.pdf')); plt.close(fig)
 
 
 def main():
+    # all outputs go to ZEE_OUT (default results/ of the checkout); a frozen read-only checkout needs ZEE_OUT (and ZEE_CACHE for benchmarks.py) set to a writable directory
+    global OUT
+    OUT = os.environ.get('ZEE_OUT', os.path.join(ROOT, 'results'))
+    try: os.makedirs(OUT, exist_ok=True); _t = os.path.join(OUT, '.write_test'); open(_t, 'w').close(); os.remove(_t)
+    except OSError as e_: sys.exit('output directory %s is not writable (%s): set ZEE_OUT to a writable directory (the frozen checkout is read-only)' % (OUT, e_))
+    if os.environ.get('PLOTDIR'):
+        try: os.makedirs(os.environ['PLOTDIR'], exist_ok=True)
+        except OSError as e_: sys.exit('PLOTDIR not writable: %s' % e_)
     out = sys.argv[1]; TOPK = int(sys.argv[2]) if len(sys.argv) > 2 else 10; NS = int(sys.argv[3]) if len(sys.argv) > 3 else 200; NF = int(sys.argv[4]) if len(sys.argv) > 4 else 6
     cmin = float(json.load(open(os.path.join(ROOT, 'results', 'refit_hw.json')))['best']['chi2'])
     J = [json.load(open(f)) for f in sorted(glob.glob(os.path.join(out, 'camp_*.json')))]
@@ -131,6 +153,11 @@ def main():
     if any(not j.get('higgs') for j in J) and not os.environ.get('ALLOW_NO_COLLIDER'): sys.exit('chains without an initialised HiggsTools collider stage (ALLOW_NO_COLLIDER=1 overrides)')
     ids = collections.Counter((j['mode'], j['logL'], j['seed']) for j in J); dup = [k for k, v in ids.items() if v > 1]; res['duplicate_jobs'] = [list(k) for k in dup]
     if dup: sys.exit('duplicate job outputs: %s' % dup[:5])
+    exp = json.load(open(os.environ['EXPECT_FILE'])) if os.environ.get('EXPECT_FILE') else None
+    if exp is not None:                                   # exact expected IDs (mode, logL, seed): missing outputs need accounting from the Condor logs, they are not evidence of 'no physical points'
+        want = {(e_['mode'], float(e_['logL']), int(e_['seed'])) for e_ in exp}; have = {(j['mode'], float(j['logL']), int(j['seed'])) for j in J}
+        res['missing_jobs'] = sorted(map(list, want - have)); res['unexpected_jobs'] = sorted(map(list, have - want))
+        if (want - have or have - want) and not os.environ.get('ALLOW_MISSING'): sys.exit('job inventory mismatch: %d missing, %d unexpected (ALLOW_MISSING=1 overrides, e.g. to inspect a partial run); missing e.g. %s' % (len(want - have), len(have - want), sorted(want - have)[:3]))
     if os.environ.get('EXPECT') and int(os.environ['EXPECT']) != len(J): sys.exit('expected %s job outputs, found %d (missing or extra jobs)' % (os.environ['EXPECT'], len(J)))
     if len(man) > 1 and not os.environ.get('ALLOW_MIXED'): sys.exit('mixed code/data/run-id/commit in %s: %s (set ALLOW_MIXED=1 to override)' % (out, dict(man)))
     for j in J:                                           # expand the proposal-indexed trace: repeated states appear with their dwell counts
@@ -151,19 +178,24 @@ def main():
     # sampler diagnostics per (logL, start)
     bas = collections.defaultdict(list)
     for j in J:
-        if j['mode'] == 'sample' and j['series']: bas[(j['logL'], j['start'])].append(j)
+        if j['mode'] == 'sample': bas[(j['logL'], j['start'])].append(j)          # ALL sample chains enter the inventory, including empty ones
     rng = np.random.default_rng(0)
     for (L_, st), chs in sorted(bas.items()):
-        q = {'log_tmg': lambda p: np.log10(p['obs']['tau_mu_g']), 'log_m1': lambda p: np.log10(p['masses']['m1']), 'cert': lambda p: p['cert']['min'],
+        q = {'log_tmg': lambda p: np.log10(p['obs']['tau_mu_g']), 'log_m1': lambda p: np.log10(p['masses']['m1']), 'cert_pos': lambda p: max(p['cert']['min'], 0.0),
              'log_maxY2': lambda p: np.log10(max(np.abs(p['x'][2:11]).max(), 1e-12)), 'tanb': lambda p: float(np.exp(p['x'][11])), 'cba': lambda p: p['masses']['cba'],
              'lam4': lambda p: p['x'][18], 'lam6': lambda p: p['x'][17], 'log_meg': lambda p: np.log10(max(p['obs']['mu_e_g'], 1e-30))}
-        cls = collections.Counter(classify(c) for c in chs)
-        d = dict(n_chains=len(chs), n_points=sum(len(c['series']) for c in chs), n_stuck=sum(len({p['id'] for p in c['series']}) < 2 for c in chs), n_incomplete=sum(not c.get('complete') for c in chs), classes=dict(cls),
+        n_exp = sum(1 for e_ in (exp or []) if e_['mode'] == 'sample' and float(e_['logL']) == L_ and e_['start'] == st) or len(chs)
+        chs_all = chs; chs = [c for c in chs_all if len(c['series']) >= 8]              # diagnostics (R-hat/ESS) need >= 8 stored states; the others stay in the inventory and block the converged label
+        cls = collections.Counter(classify(c) for c in chs_all)
+        if not chs:
+            res['basins']['logL=%g|start=%d' % (L_, st)] = dict(n_expected=n_exp, n_found=len(chs_all), n_missing=n_exp - len(chs_all), n_chains=0, classes=dict(cls), converged=False, note='no chain with >= 8 stored states')
+            continue
+        d = dict(n_expected=n_exp, n_found=len(chs_all), n_missing=n_exp - len(chs_all), n_empty_or_short=len(chs_all) - len(chs), n_chains=len(chs), n_points=sum(len(c['series']) for c in chs), n_stuck=sum(len({p['id'] for p in c['series']}) < 2 for c in chs), n_incomplete=sum(not c.get('complete') for c in chs), classes=dict(cls),
                  n_enter=[c.get('n_enter') for c in chs])
         for nm, f in q.items():
             ser = [[f(p) for p in c['series']] for c in chs]; zs = rank_norm(ser)         # all chains enter (none is discarded); the rank-normalised values give bulk R-hat/ESS
             d['rhat_' + nm] = rhat(zs); d['ess_' + nm] = float(sum(len(s_)/act(s_) for s_ in zs))
-        d['converged'] = bool(len(chs) >= 4 and cls.get('COMPLETE_TARGET_SAMPLED', 0) == len(chs) and d['n_stuck'] == 0 and d['n_incomplete'] == 0
+        d['converged'] = bool(len(chs) >= 4 and n_exp == len(chs_all) == len(chs) and cls.get('COMPLETE_TARGET_SAMPLED', 0) == n_exp and d['n_stuck'] == 0 and d['n_incomplete'] == 0
                               and all(d['rhat_' + n_] < 1.1 for n_ in q) and min(d['ess_' + n_] for n_ in q) >= 100)
         d['frac_final_pass'] = float(np.mean([np.mean([p.get('final_status') == 'PASS' for p in c['series']]) for c in chs]))   # stored states that pass vacuum+collider+requested cutoff
         for X in (10.0, 11.0, 12.0):                      # DIAGNOSTIC fraction of visited stored states with certified scale >= X (5-variant minimum), full gate not required
@@ -173,44 +205,71 @@ def main():
         res['basins']['logL=%g|start=%d' % (L_, st)] = d
     # verification
     import accept as AC, cert as CE
-    def verify(group, p, logL, prov=None):
-        """full gate + fine-grid certification.  meets_cutoff: logL > 0: vacuum/collider/low-energy PASS and a POSITIVE valid certified reach >= logL
-        (a -1 start-failure sentinel can never satisfy a cutoff); logL = -1 (nominal baseline): low-energy PASS only; logL = 0 (rescaled reference):
-        PASS and a positive valid reach.  The fields separate nominal acceptance from the rescaled-variant result."""
-        x, eta = np.array(p['x']), np.array(p['eta'])
-        r = AC.accept(x, eta, cmin, logL=None, collider=True, n_vac=200); cs, cd = CE.cert(x, eta, CE.FULL)
-        nominal = (r['status'] == 'PASS'); reach_valid = bool(np.isfinite(cs) and cs > 0); start_fail = any(str(v['fail']).startswith('start') for v in cd.values())
-        num_stop = sorted({v['fail'] for v in cd.values() if v['fail'] in ('integration', 'nonfinite')})
-        ok = nominal and (True if logL < -0.5 else (reach_valid and not start_fail and (logL < 0.5 or cs >= logL)))
-        return dict(group=group, logL=logL, status=r['status'], failed=r.get('failed_cuts'), certified13=(float(cs) if reach_valid else None), nominal_pass=bool(nominal), reach_valid=reach_valid, start_fail=bool(start_fail),
-                    numerical_stops=num_stop, meets_cutoff=bool(ok), chi2=r['chi2'], provenance=prov,
-                    obs={**{k: r['obs'][k] for k in ('mu_e_g', 'tau_mu_g', 'tau_e_g')}, 'h_tau_mu': r.get('collider', {}).get('BR_h_tau_mu', r['obs']['h_tau_mu'])}, x=list(map(float, x)), eta=list(map(float, eta)))
-    seen = set(); key_of = lambda p: tuple(np.round(np.asarray(p['x'], float), 12)) + tuple(np.round(np.asarray(p['eta'], float), 12))
-    cands = collections.defaultdict(list)
+    key_of = lambda p: tuple(np.round(np.asarray(p['x'], float), 12)) + tuple(np.round(np.asarray(p['eta'], float), 12))
+    cache = {}                                            # one verification per distinct input (exact full parameter vector); group/cutoff memberships are kept separately
+
+    def raw_verify(p):
+        k = key_of(p)
+        if k not in cache:
+            x, eta = np.array(p['x']), np.array(p['eta'])
+            r = AC.accept(x, eta, cmin, logL=None, collider=True, n_vac=200); cs, cd = CE.cert(x, eta, CE.FULL); rc = reach_class(cs, cd)
+            cache[k] = dict(status=r['status'], failed=r.get('failed_cuts'), nominal_pass=(r['status'] == 'PASS'), reach_class=rc, chi2=r['chi2'],
+                            reach_valid=bool(np.isfinite(cs) and cs > 0 and rc in ('physical_failure', 'ceiling')), cs=float(cs), x=list(map(float, x)), eta=list(map(float, eta)),
+                            numerical_stops=sorted({v['fail'] for v in cd.values() if v['fail'] in ('integration', 'nonfinite')}),
+                            obs={**{kk: r['obs'][kk] for kk in ('mu_e_g', 'tau_mu_g', 'tau_e_g')}, 'h_tau_mu': r.get('collider', {}).get('BR_h_tau_mu', r['obs']['h_tau_mu'])})
+        return cache[k]
+
+    def member(raw, group, logL, prov=None):
+        """eligibility of a verified point for the cutoff of THIS membership: logL > 0: nominal PASS and a valid (physical/ceiling) screening reach >= logL; logL = -1 (nominal baseline):
+        nominal PASS only; logL = 0: PASS and a valid reach.  Numerical stops and boundary failures never count as a demonstrated scale (the stop prefix is reported separately)."""
+        ok = raw['nominal_pass'] and (True if logL < -0.5 else (raw['reach_valid'] and (logL < 0.5 or raw['cs'] >= logL)))
+        return dict(group=group, logL=logL, status=raw['status'], failed=raw['failed'], screen13=(raw['cs'] if raw['reach_valid'] else None), prefix_screen13=(raw['cs'] if raw['reach_class'] == 'numerical_stop' and raw['cs'] > 0 else None),
+                    reach_class=raw['reach_class'], nominal_pass=raw['nominal_pass'], reach_valid=raw['reach_valid'], start_fail=(raw['reach_class'] == 'boundary_failure'), numerical_stops=raw['numerical_stops'],
+                    meets_cutoff=bool(ok), chi2=raw['chi2'], provenance=prov, obs=raw['obs'], x=raw['x'], eta=raw['eta'])
+    members = collections.defaultdict(list)               # group -> [(point, logL, provenance)]; the same input may belong to several groups
     for j in J:                                           # best AND the archive of the last accepted improvements: a candidate whose final revalidation fails is replaced by its predecessors
         grp = '%s|%g' % (j['mode'], j['logL'])
-        prov = dict(run=j['manifest'].get('run_id'), seed=j['seed'], start=j['start'], margin=j.get('margin'), logL=j['logL'])
+        prov = dict(run=j['manifest'].get('run_id'), seed=j['seed'], start=j['start'], margin=j.get('margin'), logL=j['logL'], mode=j['mode'])
         if j['best'] or j.get('best_archive'):
+            seen_g = set()
             for b in ([j['best']] if j['best'] else []) + list(j.get('best_archive') or []):
-                if key_of(b) not in seen: seen.add(key_of(b)); cands[grp].append((b, j['logL'], prov))     # deduplicated in full parameter coordinates
+                if key_of(b) not in seen_g: seen_g.add(key_of(b)); members[grp].append((b, j['logL'], prov))       # deduplicate within a job only
         if j.get('best_unresolved'): res.setdefault('unresolved_bests', []).append(dict(group=grp, obs=j['best_unresolved']['obs']))
-    for k, L_ in cands.items():
+    for k, L_ in members.items():
         key = k.split('|')[0].split(':')[1]
-        for b, lg, pv in sorted(L_, key=lambda t: -t[0]['obs'][key])[:TOPK*3]: res['verified'].append(verify(k, b, lg, pv))
-    pool = [(p, j['logL']) for j in J if j['mode'] == 'sample' for p in j['series']]; pool = list({key_of(p): (p, l_) for p, l_ in pool}.values())       # distinct states (dwell weights stay in the chains)
-    for i in (rng.choice(len(pool), size=min(NS, len(pool)), replace=False) if pool else []): res['verified'].append(verify('sample', *pool[i], prov=dict(kind='visited-state sample')))
-    res['n_verified'] = len(res['verified']); res['n_pass'] = sum(v['meets_cutoff'] for v in res['verified'])
-    good = [v for v in res['verified'] if v['meets_cutoff'] and v['group'] != 'sample']
-    fin = sorted([v for v in good if v['certified13'] is not None], key=lambda v: -v['certified13'])[:max(NF//2, 1)]      # highest demonstrated scales ...
-    for obs_ in ('mu_e_g', 'tau_mu_g', 'tau_e_g', 'h_tau_mu'):                      # ... the best verified witness of each observable, and of each observable at EACH requested cutoff (Pareto witnesses)
-        for lg in sorted({v['logL'] for v in good if v['logL'] > 0}) + [None]:
-            w = sorted([v for v in good if v['obs'][obs_] is not None and (lg is None or v['logL'] == lg)], key=lambda v: -v['obs'][obs_])[:1]
-            fin += [v for v in w if v not in fin]
+        for b, lg, pv in sorted(L_, key=lambda t: -t[0]['obs'][key])[:TOPK*3]: res['verified'].append(member(raw_verify(b), k, lg, pv))
+    pool = {}                                             # distinct visited states of the sample chains: all memberships (logL of every chain that visited them) are retained
+    for j in J:
+        if j['mode'] != 'sample': continue
+        for p in j['series']: pool.setdefault(key_of(p), (p, set()))[1].add(j['logL'])
+    states = list(pool.values())
+    chosen = {}                                           # purposeful extremes: best rate per observable among gate-passing stored states, highest screening reach, plus random representatives
+    for obs_ in ('mu_e_g', 'tau_mu_g', 'tau_e_g', 'h_tau_mu'):
+        for p, ls in sorted([t for t in states if t[0].get('final_status') == 'PASS'], key=lambda t: -t[0]['obs'][obs_])[:5]: chosen[key_of(p)] = (p, ls, 'sample-extreme:' + obs_)
+    for p, ls in sorted([t for t in states if t[0].get('cert')], key=lambda t: -t[0]['cert']['min'])[:5]: chosen.setdefault(key_of(p), (p, ls, 'sample-extreme:reach'))
+    for i in (rng.choice(len(states), size=min(NS, len(states)), replace=False) if states else []): chosen.setdefault(key_of(states[i][0]), (states[i][0], states[i][1], 'sample-random'))
+    for p, ls, why in chosen.values():
+        for lg in sorted(ls): res['verified'].append(member(raw_verify(p), 'sample', lg, dict(kind=why)))
+    res['n_verified_distinct'] = len(cache); res['n_verified'] = len(res['verified']); res['n_pass'] = sum(v['meets_cutoff'] for v in res['verified'])
+    # finalists: eligibility is judged on the verified scale of each DISTINCT point (valid for every cutoff it reaches), not on the cutoff of the job that produced it
+    good = {}
+    for k_, raw in cache.items():
+        if raw['nominal_pass'] and raw['reach_valid']: good[k_] = raw
+    fin_raw = sorted(good.values(), key=lambda v: -v['cs'])[:max(NF//2, 1)]      # highest demonstrated (screening) scales ...
+    fin = [dict(x=v['x'], eta=v['eta'], obs=v['obs'], logL=None, group='top-reach', provenance=None) for v in fin_raw]
+    pm = collections.defaultdict(list)
+    for v in res['verified']: pm[tuple(np.round(v['x'], 12))].append(v)
+    for obs_ in ('mu_e_g', 'tau_mu_g', 'tau_e_g', 'h_tau_mu'):     # ... the best verified witness of each observable, and of each observable at EACH requested cutoff (Pareto witnesses)
+        for lg in sorted({v['logL'] for v in res['verified'] if v['logL'] > 0}) + [None]:
+            w = sorted([r for r in good.values() if r['obs'][obs_] is not None and (lg is None or r['cs'] >= lg)], key=lambda r: -r['obs'][obs_])[:1]
+            fin += [dict(x=r['x'], eta=r['eta'], obs=r['obs'], logL=lg, group='best-%s@%s' % (obs_, lg), provenance=[m['provenance'] for m in pm.get(tuple(np.round(r['x'], 12)), [])][:4]) for r in w]
+    seen_f = set(); fin = [f for f in fin if not (tuple(np.round(f['x'], 12)) in seen_f or seen_f.add(tuple(np.round(f['x'], 12))))]
     from campaign import clean
-    json.dump(clean(res), open(os.path.join(ROOT, 'results', 'campaign_summary.json'), 'w'), indent=1, allow_nan=False)
-    json.dump({'C%d' % i: dict(x=v['x'], eta=v['eta'], origin='campaign ' + v['group'], provenance=v.get('provenance')) for i, v in enumerate(fin)}, open(os.path.join(ROOT, 'results', 'campaign_finalists.json'), 'w'), indent=1)
+    json.dump(clean(res), open(os.path.join(OUT, 'campaign_summary.json'), 'w'), indent=1, allow_nan=False)
+    json.dump({'C%d' % i: dict(x=v['x'], eta=v['eta'], origin='campaign ' + v['group'], provenance=v.get('provenance')) for i, v in enumerate(fin)}, open(os.path.join(OUT, 'campaign_finalists.json'), 'w'), indent=1)
     if os.environ.get('PLOTDIR'): make_verified_plot(res['verified'], os.environ['PLOTDIR'])
     print(json.dumps(res['groups'], indent=0)[:1500]); print('verified', res['n_verified'], 'meet cutoff', res['n_pass'], 'finalists', len(fin))
 
 
+OUT = None
 if __name__ == '__main__': main()

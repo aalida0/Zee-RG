@@ -38,3 +38,22 @@ def test_rg_status_numerical_stops_are_not_physical_cutoffs():
     assert B.rg_status_of(dict(ok, e='integration'), 11.6)[1] is True
     assert B.rg_status_of(dict(ok, e='start:BFB'), -1.0)[:1] == (True,) and B.rg_status_of(dict(ok, e='start:BFB'), -1.0)[2] == 'start-fail'
     assert B.rg_status_of(ok, float('nan'))[1] is True
+
+
+def test_borderline_bfb_is_unresolved_not_physical():
+    import benchmarks as B
+    assert B.rg_status_of(dict(a='unitarity', b='BFB?'), 11.0) == (False, True, 'unresolved (borderline BFB margin)')
+
+
+def test_running_top_yukawa_check():
+    """a trajectory whose top Yukawa is non-perturbative at the matching scale is a start failure ('yukawa'), tan(beta) large enough makes rho_t = tan(beta) y_t non-perturbative"""
+    c = np.array([0.26, 0.26, 0.2, 0.1, 0.05, 0.02, 0.0, 0.1, 0.0, 0.0, 0.1])
+    out = bench.trajectory(c, np.log(600.0), -5.0, np.array([0.36, 0.64, 1.05, 0.88]))      # rho_t = 5 * 0.88 = 4.4 > sqrt(4 pi)
+    assert out['fail'] == 'start:yukawa' and out['log10Lambda'] == -1.0
+
+
+def test_dy_above_500_gev_is_outside_domain():
+    """report v10: above the last tabulated mass the Drell-Yan screen claims no exclusion; states with appreciable leptonic BR are UNRESOLVED (fail closed), negligible ones pass and are flagged"""
+    from zee import dy
+    a = dy.screen_state(700.0, 0.8, 1e-3, 2e-3, 1e-3); assert a['status'] == 'PASS' and a['outside_domain']
+    b = dy.screen_state(700.0, 0.8, 0.1, 0.2, 0.1); assert b['status'] == 'UNRESOLVED' and b['outside_domain']

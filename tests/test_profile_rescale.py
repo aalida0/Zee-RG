@@ -22,3 +22,18 @@ def test_rescale_keeps_full_complex_neutrino_matrix_and_scalars():
             nz = np.nonzero(x[:11])[0]; assert len(nz) >= 5
             sb = lambda t: t/np.sqrt(1 + t*t); tb0 = np.exp(x[11])
             for i in nz: assert x1[i]/x[i] == (tb0/tbv if i < 2 else sb(tbv)/sb(tb0)) or abs(x1[i]/x[i] - (tb0/tbv if i < 2 else sb(tbv)/sb(tb0))) < 1e-12
+
+
+def test_parent_completion_retained_and_benchmarks_pass_gate_at_own_tanbeta():
+    """report v10: the profile must keep the parent's lambda2, lambda9, lambda_h; a benchmark evaluated at its own tan(beta), x and eta unchanged, still passes the low-energy gate"""
+    import profile_tb as P
+    B = json.load(open(ROOT + '/results/benchmarks_input.json'))
+    for k in B:
+        eta = np.array(B[k]['eta'], float)
+        assert np.array_equal(P.full_eta(eta, eta[[1, 2, 4]]), eta)
+        e2 = P.full_eta(eta, [0.1, 0.1, 0.1]); assert e2[0] == eta[0] and e2[3] == eta[3] and e2[5] == eta[5] and np.all(e2[[1, 2, 4]] == 0.1)
+        x = H.rescale_fixed_nu(np.array(B[k]['x'], float), np.exp(B[k]['x'][11]))
+        assert np.allclose(x, B[k]['x'], rtol=1e-12, atol=0)
+        try: import campaign as C
+        except Exception: continue
+        if C.HAVE_HIGGS: assert C.stage_gate(x, eta, -1.0, rescaled=False)[0] is True

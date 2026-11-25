@@ -25,18 +25,28 @@ def _bad(c):
     return 'BFB' if v < bench.BFB_TOL else None
 
 
+YMAX = np.sqrt(4*np.pi)
+
+
+def _ybad(z4, r):
+    """running top Yukawa y_t and the second-doublet top coupling rho_t = r*y_t (r = -tan(beta) fixed ratio) must stay perturbative; only these two Yukawas and the gauge couplings are evolved
+    (lepton Yukawas, b and tau are not: see the manuscript scope), so this is a scalar-quartic + top-sector consistency test, not an all-Yukawa one"""
+    return 'yukawa' if (not np.all(np.isfinite(z4)) or abs(z4[3]) > YMAX or abs(r*z4[3]) > YMAX) else None
+
+
 def run(c, t0, r, g0):
     s = solve_ivp(R.rhs_r(r), (t0, LOG16), np.concatenate([g0, c]), dense_output=True, rtol=1e-7, atol=1e-9)
     grid = np.append(np.arange(t0, LOG16, np.log(10)/N_PER_DEC), LOG16); prev = t0
     for t in grid:
         if t > s.t[-1] + 1e-12: return prev/np.log(10), 'integration'
-        why = _bad(s.sol(t)[4:])
+        zt = s.sol(t); why = _bad(zt[4:]) or _ybad(zt[:4], r)
         if why and prev == t0 and t == t0: return -1.0, 'start:' + why      # fails at the boundary itself: nothing was verified
         if why:
             lo, hi = prev, t
             for _ in range(10):
                 mid = 0.5*(lo + hi)
-                if _bad(s.sol(mid)[4:]): hi = mid
+                zm = s.sol(mid)
+                if _bad(zm[4:]) or _ybad(zm[:4], r): hi = mid
                 else: lo = mid
             return lo/np.log(10), why
         prev = t

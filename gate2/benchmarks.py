@@ -9,7 +9,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path[:0] = [ROOT, os.path.join(ROOT, 'gate1'), os.path.join(ROOT, 'gate2')]
 import accept as AC, bench
 from zee import hgmodel as H, neutrino as N, dipfull as DF
-RES = os.path.join(ROOT, 'results'); CACHE = os.path.join(RES, 'bench_cache'); os.makedirs(CACHE, exist_ok=True)
+RES = os.path.join(ROOT, 'results'); CACHE = os.environ.get('ZEE_CACHE', os.path.join(RES, 'bench_cache'))     # ZEE_CACHE / BM_OUTPUT: writable locations when the checkout is read-only
+try: os.makedirs(CACHE, exist_ok=True)
+except OSError as _e: raise SystemExit('benchmark cache %s is not writable (%s): set ZEE_CACHE to a writable directory' % (CACHE, _e))
 G0 = np.array([0.36, 0.64, 1.05, 0.88])
 SRC = sorted(glob.glob(os.path.join(ROOT, 'zee', '*.py'))) + [os.path.join(ROOT, 'gate2', f) for f in ('bench.py', 'benchmarks.py')]
 CODE = hashlib.sha256(b''.join(open(f, 'rb').read() for f in SRC)).hexdigest()[:16]
@@ -63,8 +65,9 @@ def rg_status_of(fails_, reach):
     (fail closed) and must not be quoted as a cutoff.  Anything else (unitarity, perturbativity, BFB, BFB?) is a physical first failure."""
     reasons = [str(v) for v in fails_.values()]
     start_fail = any(v.startswith('start') for v in reasons)
-    numerical = any(v in ('integration', 'nonfinite') for v in reasons) or not np.isfinite(reach)
-    label = 'start-fail' if start_fail else ('unresolved (numerical stop: demonstrated prefix only)' if numerical else 'ok')
+    borderline = any(v == 'BFB?' for v in reasons)       # BFB margin within the numerical tolerance of zero: unresolved, not a known physical crossing
+    numerical = any(v in ('integration', 'nonfinite') for v in reasons) or not np.isfinite(reach) or borderline
+    label = 'start-fail' if start_fail else (('unresolved (borderline BFB margin)' if borderline else 'unresolved (numerical stop: demonstrated prefix only)') if numerical else 'ok')
     return start_fail, numerical, label
 
 

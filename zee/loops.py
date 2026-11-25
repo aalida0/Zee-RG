@@ -58,7 +58,8 @@ def _build():
     with warnings.catch_warnings(), np.errstate(all="ignore"):
         warnings.simplefilter("ignore")
         T = np.array([[fn(v) for v in z] for fn in (FH_exact, FA_exact, G_exact, F2_exact)])
-    np.savez(_CACHE, lz=_LZ, T=T, src=_SRC)
+    try: np.savez(_CACHE, lz=_LZ, T=T, src=_SRC)
+    except OSError: pass                              # read-only checkout: keep the in-memory table
     return T
 
 

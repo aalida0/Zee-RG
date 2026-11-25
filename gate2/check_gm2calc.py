@@ -47,7 +47,20 @@ def code(mHp, mH, mA, M2, zu, zd, zl, hw):
     return D.diagonal_moments(AL, AR)[0][1] - D.diagonal_moments(L0, R0)[0][1]
 
 
+def heavy():
+    """extension to the benchmark mass range (report v10): M_H+ = 600, 800, 900, 1000 GeV with H, A at M_H+ + (20, 40) GeV, tan(beta) = 1, several couplings -> results/gm2calc_check_heavy.json"""
+    rows = []
+    for mHp in (600, 800, 900, 1000):
+        for zl in (10, 30):
+            for zu, zd in ((-1, -1), (-2, -2)):
+                g = gm2calc(mHp, mHp + 20, mHp + 40, mHp**2, zu, zd, zl)
+                r = dict(mHp=mHp, zl=zl, zu=zu, zd=zd, gm2calc=g, code={str(h): code(mHp, mHp + 20, mHp + 40, mHp**2, zu, zd, zl, h) for h in (1, 0, -1)}); r['ratio'] = {h: v/g for h, v in r['code'].items()}; rows.append(r)
+                print(mHp, zl, zu, zd, 'GM2Calc %.3e' % g, 'ratio HW=+1/0/-1: ' + ' '.join('%.2f' % r['ratio'][h] for h in ('1', '0', '-1')), flush=True)
+    json.dump(dict(rows=rows, gm2calc_commit=os.environ.get('GM2COMMIT', '372ee01'), note='aligned 2HDM, type 5, exact alignment; diagonal Delta a_mu only'), open(os.path.join(os.path.dirname(__file__), '..', 'results', 'gm2calc_check_heavy.json'), 'w'), indent=1)
+
+
 if __name__ == '__main__':
+    if len(sys.argv) > 1 and sys.argv[1] == 'heavy': heavy(); sys.exit()
     for mHp, mH, mA in [(90, 150, 170), (200, 250, 250), (300, 300, 300), (400, 420, 430)]:
         g = gm2calc(mHp, mH, mA, mHp**2, -1, -1, 30)
         print(mHp, mH, mA, 'GM2Calc %.3e' % g, ' code HW=0/+1/-1: ' + ' '.join('%.3e' % code(mHp, mH, mA, mHp**2, -1, -1, 30, h) for h in (0, 1, -1)))

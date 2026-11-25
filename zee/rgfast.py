@@ -34,7 +34,8 @@ def _build():
         B1[:, i] = beta(e, np.array([1.0, 0]), 0.0)[0] - C11 - A[:, i, i]
         B2[:, i] = beta(e, np.array([0, 1.0]), 0.0)[0] - C22 - A[:, i, i]
         for b in (beta(e, np.array([1.0, 1.0]), 0.0), beta(e, g0, 1.0)): worst = max(worst, b[1])
-    np.savez(_F, A=A, Bt=Bt, B1=B1, B2=B2, C11=C11, C12=C12, C22=C22, Ct=Ct, worst=worst)
+    try: np.savez(_F, A=A, Bt=Bt, B1=B1, B2=B2, C11=C11, C12=C12, C22=C22, Ct=Ct, worst=worst)
+    except OSError: pass
 if not os.path.exists(_F): _build()
 _d = np.load(_F); A, Bt, B1, B2, C11, C12, C22, Ct = (_d[k] for k in ('A', 'Bt', 'B1', 'B2', 'C11', 'C12', 'C22', 'Ct'))
 BG = np.array([41 / 6 + 1 / 6 + 1 / 3, -19 / 6 + 1 / 6, -7.0])

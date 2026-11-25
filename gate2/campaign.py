@@ -279,7 +279,7 @@ if __name__ == '__main__':
             if not burn: acc_post += 1
             if key and (not climb or coarse_reach(inf) >= logL):        # a state that already meets the REQUESTED cutoff is a candidate even if the optional extra-decade walk margin is not yet reached
                 if not climb: cur = obs_of(inf, key)
-                if obs_of(inf, key) > max(best['obs'][key] if best else 0.0, best_unres['obs'][key] if best_unres else 0.0)*1.02:
+                if obs_of(inf, key) > (best['obs'][key] if best else 0.0)*1.02:      # valid and unresolved tracks are independent: an unresolved high-rate point must not hide a lower, fully valid improvement
                     consider_best(zn, inf, acc)
         if not key and not burn:                         # proposal-indexed storage: rejected proposals repeat the current state
             n_post += 1

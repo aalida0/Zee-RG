@@ -5,7 +5,7 @@ set -e
 Z=$HOME/zee_env
 : "${RUN_ID:?RUN_ID is not set}"
 R=$Z/runs/$RUN_ID
-export ZEE_INPUTS=modern ZEE_REQUIRE_HIGGS=1 ZEE_DATA=$Z/zee_data RUN_ID OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1
+export PYTHONDONTWRITEBYTECODE=1 ZEE_INPUTS=modern ZEE_REQUIRE_HIGGS=1 ZEE_DATA=$Z/zee_data RUN_ID OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1
 [ -d "$R/repo" ] || { echo "run directory $R/repo missing on $(hostname)" >&2; exit 2; }
 $Z/venv/bin/python -I -c "import Higgs" 2>/dev/null || { echo "HiggsTools not importable on $(hostname): candidate mode only, refusing to run" >&2; exit 3; }
 [ -r "$ZEE_DATA/hbdataset" ] || { echo "HiggsBounds dataset not readable on $(hostname)" >&2; exit 4; }

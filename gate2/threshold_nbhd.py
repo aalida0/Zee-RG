@@ -22,10 +22,16 @@ if __name__ == '__main__':
         x, eta = np.array(inp[n]['x']), np.array(inp[n]['eta']); sc, c0 = bench.coup(x, eta); base = scale(c0, sc)
         one = {NAMES[i]: {('%+.2f' % d): scale(c0 + d*np.eye(11)[i], sc) for d in SHIFTS} for i in range(11)}
         rng = np.random.default_rng(7); rnd = {}
-        for d in (0.05, 0.10):
-            res = [scale(c0 + rng.uniform(-d, d, 11), sc) for _ in range(200)]; L = np.array([r[0] for r in res])
-            rnd['%.2f' % d] = dict(n=len(L), start_fail=int(np.sum(L < 0)), frac_ge_10=float(np.mean(L >= 10)), frac_ge_11=float(np.mean(L >= 11)), frac_ge_12=float(np.mean(L >= 12)),
-                                   median=float(np.median(L)), p16=float(np.percentile(L, 16)), p84=float(np.percentile(L, 84)))
+        for scheme in ('all11', 'no_lh'):                  # no_lh: lambda_h is not shifted (for BM2, lambda_h = 0.02 makes a +-0.05 shift negative 30% of the time by construction)
+            for d in (0.05, 0.10):
+                res = []
+                for _ in range(200):
+                    dl = rng.uniform(-d, d, 11)
+                    if scheme == 'no_lh': dl[10] = 0.0
+                    res.append(scale(c0 + dl, sc))
+                L = np.array([r[0] for r in res]); valid = L[L > 0]                  # failures at the matching scale are a CATEGORY (never a scale); quantiles are conditional on valid reach
+                rnd['%s_%.2f' % (scheme, d)] = dict(n=len(L), boundary_failure=int(np.sum(L < 0)), frac_boundary_failure=float(np.mean(L < 0)), frac_ge_10=float(np.mean(L >= 10)), frac_ge_11=float(np.mean(L >= 11)), frac_ge_12=float(np.mean(L >= 12)),
+                                                    n_valid=int(len(valid)), valid_median=(float(np.median(valid)) if len(valid) else None), valid_p16=(float(np.percentile(valid, 16)) if len(valid) else None), valid_p84=(float(np.percentile(valid, 84)) if len(valid) else None))
         out[n] = dict(base=base, boundary_quartics=dict(zip(NAMES, map(float, c0))), one_at_a_time=one, random=rnd)
-        print(n, 'base %.2f' % base[0], {k: rnd[k] for k in rnd}, flush=True)
-    json.dump(out, open(os.environ.get('BM_OUTPUT', os.path.join(ROOT, 'results', 'threshold_nbhd.json')), 'w'), indent=1)
+        print(n, 'base %.2f' % base[0], {k: (v['frac_boundary_failure'], v['frac_ge_12']) for k, v in rnd.items()}, flush=True)
+    json.dump(out, open(os.environ.get('BM_OUTPUT', os.path.join(os.environ.get('ZEE_OUT', os.path.join(ROOT, 'results')), 'threshold_nbhd.json')), 'w'), indent=1)

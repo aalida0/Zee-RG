@@ -40,4 +40,6 @@ else:
                             ('h_tau_mu', 10, 1, 0.0), ('h_tau_mu', 12, 0, 0.0), ('h_tau_mu', 14, 1, 0.0)):
         jobs.append(('max:' + m, logL, st*1000 + 1, st, mg))
 body = ''.join(f"mode={m}\nlogL={l}\nseed={sd}\nstart={st}\nmargin={mg}\nqueue\n" for m, l, sd, st, mg in jobs)
-open('campaign.sub', 'w').write(head + body); print(len(jobs), 'jobs (%s), run %s' % (KIND, RUN))
+open('campaign.sub', 'w').write(head + body)
+import json; json.dump([dict(mode=m, logL=float(l), seed=sd, start=st, margin=mg) for m, l, sd, st, mg in jobs], open('expected_jobs_%s_%s.json' % (KIND, RUN), 'w'), indent=0)   # exact expected job IDs for the collector (EXPECT_FILE)
+print(len(jobs), 'jobs (%s), run %s' % (KIND, RUN))

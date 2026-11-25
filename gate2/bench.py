@@ -39,6 +39,7 @@ def trajectory(c0, t0, r, g, n_per_dec=100, rtol=1e-8):
         if t > s.t[-1] + 1e-12: out.update(fail='integration', Lambda=prev, unresolved=True); break   # solver stopped early: validity only up to `prev`, no physical failure
         zt = s.sol(t); c = zt[4:]; why, mg = fails(c, True)
         if why is None and not np.all(np.isfinite(zt)): why = 'nonfinite'      # gauge/Yukawa couplings must be finite as well
+        if why is None and (abs(zt[3]) > np.sqrt(4*np.pi) or abs(r*zt[3]) > np.sqrt(4*np.pi)): why = 'yukawa'      # running top / second-doublet top Yukawa must stay perturbative
         if why is None: vb, u, mx = mg
         if why and t <= t0 + 1e-12:       # fails at the boundary itself: nothing was verified, no scale is claimed (report v8 P5)
             out.update(fail='start:' + why, Lambda=-np.log(10)); break
@@ -46,7 +47,8 @@ def trajectory(c0, t0, r, g, n_per_dec=100, rtol=1e-8):
             lo, hi = prev, t      # bracket the first failure
             for _ in range(30):
                 mid = 0.5*(lo + hi)
-                if fails(s.sol(mid)[4:]): hi = mid
+                zm = s.sol(mid)
+                if fails(zm[4:]) or abs(zm[3]) > np.sqrt(4*np.pi) or abs(r*zm[3]) > np.sqrt(4*np.pi): hi = mid
                 else: lo = mid
             out.update(fail=why, Lambda=lo); break
         out['min_bfb'] = min(out['min_bfb'], vb); out['max_unit'] = max(out['max_unit'], u); out['max_lam'] = max(out['max_lam'], mx); prev = t

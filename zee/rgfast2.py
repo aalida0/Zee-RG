@@ -25,7 +25,8 @@ def _build():
         v = np.array([beta(e, *p) - beta(np.zeros(NC), *p) - 0 for p in pts2])   # includes A_ii (y-independent part cancels below)
         base = beta(e, 0.0, 0.0) - beta(np.zeros(NC), 0.0, 0.0)
         co = np.linalg.lstsq(Bm, v - base, rcond=None)[0]; Bt[:, :, i] = co[:, :]
-    np.savez(_F, D=D, Bt=Bt, res=res)
+    try: np.savez(_F, D=D, Bt=Bt, res=res)
+    except OSError: pass                              # read-only checkout: keep the in-memory table
     return res
 if not os.path.exists(_F): _build()
 _d = np.load(_F); D, Bt = _d['D'], _d['Bt']

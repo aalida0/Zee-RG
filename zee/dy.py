@@ -62,13 +62,16 @@ def w_thr(m):
     return float(np.exp(np.log(_AW[-1]) + sl*(m - _AM[-1])))
 
 
+OUT_OF_DOMAIN_LEP_BR = 0.05   # above the last tabulated mass a state is accepted without a DY constraint only if BR(l nu) summed over flavours is below this
 TAU_WINDOW = (100., 350.); TAU_B2 = 0.5
 
 
 def screen_state(m, d, be, bmu, btau):
     """One charged mass eigenstate. Returns dict(status, w_eff, w_thr, tau, reason)."""
-    if m > _M[-1]:
-        return dict(status='PASS', w_eff=0.0, w_thr=None, tau=False, reason='above 500 GeV')
+    if m > _M[-1]:                                       # OUTSIDE the recast domain (no excluded cross section is claimed): passes only if the leptonic branching ratios are negligible
+        lep = float(be + bmu + btau)
+        return dict(status='PASS' if lep <= OUT_OF_DOMAIN_LEP_BR else 'UNRESOLVED', w_eff=0.0, w_thr=None, tau=False, outside_domain=True, lep_br=lep,
+                    reason='above 500 GeV: outside the recast domain' + ('' if lep <= OUT_OF_DOMAIN_LEP_BR else '; appreciable leptonic BR, a high-mass pair-production check is required'))
     w = (bmu**2 + KAPPA_E*be**2)*sigma_dy(m, d)/_sig_R(m); thr = w_thr(m)
     tau = (TAU_WINDOW[0] <= m <= TAU_WINDOW[1]) and (btau**2 > TAU_B2)
     bad = thr is not None and w >= thr*(1 - 1e-9)

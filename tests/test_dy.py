@@ -35,5 +35,6 @@ def test_chord_upper_bound_and_decide():
     for m in (150., 300., 450.):
         for d in (0.2, 0.5, 0.8): assert dy.sigma_dy(m, d) <= max(dy.sigma_dy(m, 0.), dy.sigma_dy(m, 1.)) + 1e-12
     r = dy.decide([136.9, 758.], [.02, .98], [0, 0], [.988, .001], [.01, .01]); assert r['status'] == 'FAIL'
-    r = dy.decide([600., 758.], [.02, .98], [0, 0], [.9, .001], [.1, .01]); assert r['status'] == 'PASS'
+    r = dy.decide([600., 758.], [.02, .98], [0, 0], [.9, .001], [.1, .01]); assert r['status'] == 'UNRESOLVED'      # above 500 GeV: outside the recast domain with a large leptonic BR (no exclusion claimed, no pass either)
+    r = dy.decide([600., 758.], [.02, .98], [0, 0], [.001, .001], [.001, .01]); assert r['status'] == 'PASS' and r['states'][0]['outside_domain']
     assert st(300, 0.0, .5, .5, d=0.5) == 'FAIL'

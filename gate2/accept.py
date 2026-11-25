@@ -16,7 +16,7 @@ sys.path.insert(0, _R); sys.path.insert(0, _R + '/gate1'); sys.path.insert(0, _R
 from zee import hgmodel as H, vac, flavour as FL, chargedbr as CB, dy as DY, dipfull as DF
 import lmax2 as L
 
-DCHI2 = 3.84; HSREF = 153.72; H_TAU_MU, H_TAU_E = 0.0018, 0.0020
+DCHI2 = 3.84; HSREF = 153.72; H_TAU_E = 0.0020; H_TAU_MU = H.H_TAU_MU_LIMIT
 # HiggsSignals reference: the SM-like value of the same dataset and tool (153.72 for 159 observables at 125.5 GeV); a point passes if it is not worse than the SM-like value by more than 3.84
 SQ4PI = np.sqrt(4*np.pi)
 FMAX = 0.1                                   # |f|, |Y2| components (declared domain of the paper)

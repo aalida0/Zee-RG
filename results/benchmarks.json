@@ -47,14 +47,18 @@
      "w_eff": 0.0,
      "w_thr": null,
      "tau": false,
-     "reason": "above 500 GeV"
+     "outside_domain": true,
+     "lep_br": 0.0017503383680669924,
+     "reason": "above 500 GeV: outside the recast domain"
     },
     {
      "status": "PASS",
      "w_eff": 0.0,
      "w_thr": null,
      "tau": false,
-     "reason": "above 500 GeV"
+     "outside_domain": true,
+     "lep_br": 0.00017988971523300222,
+     "reason": "above 500 GeV: outside the recast domain"
     }
    ],
    "widths": [
@@ -115,8 +119,8 @@
    "rg_start": true,
    "vacuum": true
   },
-  "chi2": 13.029803657311295,
-  "chi2_min": 9.977201010037964,
+  "chi2": 13.02980375020602,
+  "chi2_min": 10.038106961349378,
   "chi2_parts": {
    "osc": 2.850949742605083,
    "univ": 1.8290043286647384,
@@ -131,7 +135,7 @@
    "da_e": 2.9163484060526217e-09,
    "d_mu": 1.591252640864684e-14,
    "d_e": 0.011054079949555026,
-   "h_tau_mu": 2.111243755513566e-07,
+   "h_tau_mu": 3.040191007939535e-07,
    "h_tau_e": 8.531829106081193e-15,
    "m_ee": 0.0007223657244014336,
    "mu_3e": 7.265566120255224e-07,
@@ -269,14 +273,18 @@
      "w_eff": 0.0,
      "w_thr": null,
      "tau": false,
-     "reason": "above 500 GeV"
+     "outside_domain": true,
+     "lep_br": 0.0017503383680669924,
+     "reason": "above 500 GeV: outside the recast domain"
     },
     {
      "status": "PASS",
      "w_eff": 0.0,
      "w_thr": null,
      "tau": false,
-     "reason": "above 500 GeV"
+     "outside_domain": true,
+     "lep_br": 0.00017988971523300222,
+     "reason": "above 500 GeV: outside the recast domain"
     }
    ],
    "HB_allowed": true,
@@ -678,7 +686,7 @@
     "ew_gradient": 2.7755575615628914e-17
    }
   },
-  "code_hash": "a274b33f42a12c90"
+  "code_hash": "800587873af98680"
  },
  "BM2": {
   "x": [
@@ -728,14 +736,18 @@
      "w_eff": 0.0,
      "w_thr": null,
      "tau": false,
-     "reason": "above 500 GeV"
+     "outside_domain": true,
+     "lep_br": 0.0016278908873671389,
+     "reason": "above 500 GeV: outside the recast domain"
     },
     {
      "status": "PASS",
      "w_eff": 0.0,
      "w_thr": null,
      "tau": false,
-     "reason": "above 500 GeV"
+     "outside_domain": true,
+     "lep_br": 0.0007856234229311009,
+     "reason": "above 500 GeV: outside the recast domain"
     }
    ],
    "widths": [
@@ -796,8 +808,8 @@
    "rg_start": true,
    "vacuum": true
   },
-  "chi2": 13.336269322870198,
-  "chi2_min": 9.977201010037964,
+  "chi2": 13.353378036612824,
+  "chi2_min": 10.038106961349378,
   "chi2_parts": {
    "osc": 2.8828269754036953,
    "univ": 1.8290043285267448,
@@ -812,7 +824,7 @@
    "da_e": 1.375220014207837e-09,
    "d_mu": 3.120819354745036e-16,
    "d_e": 0.0004689544311007361,
-   "h_tau_mu": 0.0388834403241479,
+   "h_tau_mu": 0.05599215406677296,
    "h_tau_e": 1.4583040572656642e-09,
    "m_ee": 0.00069463058269113,
    "mu_3e": 2.631413722361102e-10,
@@ -950,14 +962,18 @@
      "w_eff": 0.0,
      "w_thr": null,
      "tau": false,
-     "reason": "above 500 GeV"
+     "outside_domain": true,
+     "lep_br": 0.0016278908873671389,
+     "reason": "above 500 GeV: outside the recast domain"
     },
     {
      "status": "PASS",
      "w_eff": 0.0,
      "w_thr": null,
      "tau": false,
-     "reason": "above 500 GeV"
+     "outside_domain": true,
+     "lep_br": 0.0007856234229311009,
+     "reason": "above 500 GeV: outside the recast domain"
     }
    ],
    "HB_allowed": true,
@@ -1359,6 +1375,6 @@
     "ew_gradient": 2.7755575615628914e-17
    }
   },
-  "code_hash": "a274b33f42a12c90"
+  "code_hash": "800587873af98680"
  }
 }
