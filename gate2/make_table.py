@@ -20,7 +20,6 @@ print('\\midrule')
 for lab, k in (('$\\Br(\\mu\\to e\\gamma)$', 'mu_e_g'), ('$\\Br(\\tau\\to\\mu\\gamma)$', 'tau_mu_g'), ('$\\Br(\\tau\\to e\\gamma)$', 'tau_e_g'), ('$\\Br(\\mu\\to3e)$ (dipole)', 'mu_3e'), ('$|d_e|$ [$e$\\,cm]', 'd_e')):
     row(lab, lambda r, k=k: sci(r['observables'][k]))
 row('$\\Br(h\\to\\tau\\mu)$', lambda r: sci(r['collider']['BR_h_tau_mu']) if r.get('collider') else 'n/a')
-row('CR($\\mu$Au) (incoh.)', lambda r: sci(r['observables']['Cr_Au']))
 row('$B\\to X_s\\gamma$ [$10^{-4}$]', lambda r: '%.2f' % r['bsgamma_e4'])
 row('$\\chi^2$ ($\\chi^2_{\\min}=%.2f$, limit $%.2f$)' % (B[names[0]]['chi2_min'], B[names[0]]['chi2_min'] + 3.84), lambda r: '%.2f' % r['chi2'])
 row('$\\Delta\\chi^2_{\\rm HS}$, HiggsBounds', lambda r: '%.1f, %s' % (r['collider']['HS_chi2'] - 151.65, 'allowed' if r['collider']['HB_allowed'] else 'excluded'))
