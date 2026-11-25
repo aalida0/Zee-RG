@@ -15,8 +15,9 @@ Checks (tests/test_dipfull.py): the diagonal limit gives the textbook one-loop a
 (ln - 7/6), pseudoscalar (-(ln - 11/6)) and charged scalar (-1/96 pi^2); Barr-Zee signs: CP-even top loop
 negative, CP-odd positive, W loop opposite to top.
 Diagonal moments: a_I = m_I^2 Re(A_L + A_R), d_I/e = m_I Im(A_R - A_L)/2.
-  bzHW: H+- W-+ gamma Barr-Zee sets (Ilisie 1502.04199 Eqs. 22-24) for h1+, h2+ with the H+ content of each state; an estimate
-       (see bz_HW) that is below 1% of the amplitude at the benchmarks.
+  bzHW: H+- W-+ gamma Barr-Zee sets (Ilisie 1502.04199 Eqs. 22-24) for h1+, h2+ with the H+ content of each state.  It is
+       LARGE (it raises tau -> mu gamma by a factor ~2 at the earlier benchmarks) and rests on the transcription of the
+       published formulas plus the mapping Dd -> varsigma_l; the gate therefore requires all limits to hold for HW_SCALE = 0, +1, -1.
 Not included: two-loop terms beyond these.
 """
 import numpy as np
@@ -89,6 +90,7 @@ def _panels():
     return xs, ws
 _XG, _WG = _panels()
 HW_ON = True
+HW_SCALE = 1.0   # robustness variants of the H+-W-+ gamma set: 0 (off), 1 (default), -1 (opposite overall sign)
 NC, QT, QB = 3, 2.0 / 3, -1.0 / 3
 MT, MB = 172.5, 4.18
 
@@ -105,9 +107,10 @@ def bz_HW(Dd, mass, sc, trilin):
     """H+- W-+ gamma Barr-Zee amplitudes (Ilisie 1502.04199 Eqs. 22-24, S^(4), S^(5), S^(6)), A_L[J,I], A_R[J,I].
     The charged mass eigenstates h_k+ contain H+ with amplitude u = (cos phi, -sin phi) and the diagrams are summed over k
     (outer) and, for the contact-type loop, over the internal mass eigenstate j. The lepton vertex is conj(Dd[I,J]) (the neutrino
-    carries the flavour of the initial lepton). Valid only as a leading estimate: the formulae are transcribed from the
-    paper's text (the definition of G1 is inferred as G(1, .)), the overall sign of the three sets is not independently checked,
-    and they are small (see tests/test_dipfull.py::test_hw_small)."""
+    carries the flavour of the final lepton J, so that the SM W vertex is flavour diagonal; the singlet coupling 2f is neglected, f ~ 1e-6).
+    Checks (tests): diagonal limit against an independent quadrature of Ilisie's typeset formulae, charged-mass-basis independence
+    for degenerate states, decoupling.  NOT checked against an independent two-loop calculation: the overall sign and size rest on
+    the transcription, so the production gate varies HW_SCALE in {0, 1, -1}.  The definition of G1 is inferred as G(1, .)."""
     if "raw_h" not in trilin:
         return np.zeros((3, 3), complex), np.zeros((3, 3), complex)
     c, s = np.cos(sc["phi"]), np.sin(sc["phi"])
@@ -176,7 +179,7 @@ def amplitudes(Lam, mass, f, Dd, sc, trilin, parts=False):
             P[lab][1] += R
             P[lab][0] += (L * K[p][key]).conj().T / M[None, :]
     if HW_ON:
-        P["bzHW"][0], P["bzHW"][1] = bz_HW(Dd, mass, sc, trilin)
+        hl, hr = bz_HW(Dd, mass, sc, trilin); P["bzHW"][0], P["bzHW"][1] = HW_SCALE*hl, HW_SCALE*hr
     AL = sum(v[0] for v in P.values()); AR = sum(v[1] for v in P.values())
     return (AL, AR, P) if parts else (AL, AR)
 

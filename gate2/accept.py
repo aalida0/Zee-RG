@@ -13,7 +13,7 @@ Fail-closed rules:
 import sys, numpy as np
 _R = __import__('os').path.dirname(__import__('os').path.dirname(__import__('os').path.abspath(__file__)))
 sys.path.insert(0, _R); sys.path.insert(0, _R + '/gate1'); sys.path.insert(0, _R + '/gate2')
-from zee import hgmodel as H, vac, flavour as FL, chargedbr as CB, dy as DY
+from zee import hgmodel as H, vac, flavour as FL, chargedbr as CB, dy as DY, dipfull as DF
 import lmax2 as L
 
 DCHI2 = 3.84; HSMIN = 151.65; H_TAU_MU, H_TAU_E = 0.0018, 0.0020
@@ -51,6 +51,15 @@ def accept(x, eta, cmin, logL=None, collider=True, n_vac=80, seed=11, stop_early
     e = H.evaluate(list(x), 'NO', eta=eta); sc = e['sc']; o = e['obs']
     cuts.update({'chi2': e['chi2'] <= cmin + DCHI2, 'penalty': e['pen'] == 0})
     cuts.update({'lim_' + k: bool(o[k] <= lim) for k, (lim, z) in H.BOUNDS.items()})
+    # robustness against the H+-W-+ gamma set (transcription not independently verified): all hard limits must also hold with the set
+    # switched off and with its overall sign reversed
+    hw_ok = True
+    for sgn in (0.0, -1.0):
+        DF.HW_SCALE = sgn
+        try:
+            o2 = H.evaluate(list(x), 'NO', eta=eta)['obs']; hw_ok &= all(o2[k] <= lim for k, (lim, z) in H.BOUNDS.items())
+        finally: DF.HW_SCALE = 1.0
+    cuts['hw_variants'] = bool(hw_ok)
     bpull = FL.bsg_pull(sc); cuts['bsgamma'] = bool(abs(bpull) <= FL.BSG_NSIGMA)
     rec = dict(chi2=float(e['chi2']), chi2_parts=dict(osc=e['chi_osc'], univ=e['chi_univ'], stu=e['chi_stu'], higgs=e['chi_higgs'],
                **{k: float(v) for k, v in e['chi_bounds'].items()}), obs={k: float(v) for k, v in o.items()}, sc=sc, cuts=cuts,

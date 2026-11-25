@@ -154,3 +154,34 @@ def test_G_finite_at_degeneracy():
     x = np.array([0.2, 0.5, 0.8]); X = x*(1 - x)
     v = DF._G(X/x*0 + 0.0, X/(1 - x), x)          # wa x + wb (1-x) = x(1-x) -> t = 1
     assert np.isfinite(v).all() and np.allclose(v, -1/(x*(1 - x)), rtol=1e-6)
+
+
+def test_hw_mass_basis_independence_when_degenerate():
+    """Summing the two charged mass eigenstates must reproduce the unmixed H+ result when they are degenerate, for any phi."""
+    sc, mass, tri = _hw_setup(); Dd = np.zeros((3, 3), complex); Dd[1, 2] = 0.02; Dd[2, 1] = 0.01j
+    tri = dict(raw_h=(0.31, 0.12, -0.2), raw_H=(0.47, -0.3, 0.25))
+    ref = DF.bz_HW(Dd, mass, dict(sc, phi=0.0, m1=700., m2=700.), tri)
+    for phi in (0.3, 1.1, 1.4685, 2.5):
+        got = DF.bz_HW(Dd, mass, dict(sc, phi=phi, m1=700., m2=700.), tri)
+        assert np.allclose(got[0], ref[0], rtol=1e-9, atol=0) and np.allclose(got[1], ref[1], rtol=1e-9, atol=0)
+
+
+def test_hw_rephasing_covariance():
+    sc, mass, tri = _hw_setup(); rng = np.random.default_rng(5)
+    Dd = rng.normal(size=(3, 3)) + 1j*rng.normal(size=(3, 3))
+    P = np.diag(np.exp(1j*rng.uniform(0, 6, 3))); Q = np.diag(np.exp(1j*rng.uniform(0, 6, 3)))
+    AL, AR = DF.bz_HW(Dd, mass, sc, tri); AL2, AR2 = DF.bz_HW(P @ Dd @ Q, mass, sc, tri)
+    assert np.allclose(AR2, P @ AR @ Q, rtol=1e-10) and np.allclose(AL2, Q.conj() @ AL @ P.conj(), rtol=1e-10)
+
+
+def test_hw_scale_variants():
+    """HW_SCALE = 0 removes, -1 flips the sign of exactly the bzHW component."""
+    sc, mass, tri = _hw_setup(); Dd = np.zeros((3, 3), complex); Dd[1, 2] = 0.02
+    Lam = {p: np.zeros((3, 3), complex) for p in ('h', 'H', 'A')}; f = np.zeros((3, 3), complex)
+    tri = dict(tri, h=(0.1, 0.1), H=(0.1, 0.1)); out = {}
+    for s in (1.0, 0.0, -1.0):
+        DF.HW_SCALE = s
+        try: out[s] = DF.amplitudes(Lam, mass, f, Dd, sc, tri, parts=True)
+        finally: DF.HW_SCALE = 1.0
+    P1, P0, Pm = out[1.0][2]['bzHW'], out[0.0][2]['bzHW'], out[-1.0][2]['bzHW']
+    assert np.abs(P0[0]).max() == 0 and np.allclose(Pm[0], -P1[0]) and np.abs(P1[0]).max() > 0
