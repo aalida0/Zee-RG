@@ -607,6 +607,38 @@
     "solver_status": -1,
     "log10Lambda": 12.753999349657912
    },
+   "spec_x1.01": {
+    "min_bfb": null,
+    "max_unit": 0.0,
+    "max_lam": 0.0,
+    "fail": "BFB",
+    "solver_status": -1,
+    "log10Lambda": 2.790928115934949
+   },
+   "spec_x0.99": {
+    "min_bfb": 0.09030991006814906,
+    "max_unit": 24.85163848915309,
+    "max_lam": 4.3071320328313965,
+    "fail": "unitarity",
+    "solver_status": -1,
+    "log10Lambda": 11.070339873990042
+   },
+   "spec_x1.02": {
+    "min_bfb": null,
+    "max_unit": 0.0,
+    "max_lam": 0.0,
+    "fail": "BFB",
+    "solver_status": -1,
+    "log10Lambda": 2.795113532905872
+   },
+   "spec_x0.98": {
+    "min_bfb": 0.09290620637544554,
+    "max_unit": 24.845910809010963,
+    "max_lam": 4.1990843191461735,
+    "fail": "unitarity",
+    "solver_status": -1,
+    "log10Lambda": 9.566217590998141
+   },
    "rtol_1e-6": {
     "min_bfb": 0.02599748381295336,
     "max_unit": 25.036174731013624,
@@ -643,7 +675,7 @@
     "ew_gradient": 2.7755575615628914e-17
    }
   },
-  "code_hash": "3816fe4c301a2861"
+  "code_hash": "10f6c40ede2bc1fe"
  },
  "BM2": {
   "x": [
@@ -1253,6 +1285,38 @@
     "solver_status": -1,
     "log10Lambda": 13.539297506042864
    },
+   "spec_x1.01": {
+    "min_bfb": null,
+    "max_unit": 0.0,
+    "max_lam": 0.0,
+    "fail": "BFB",
+    "solver_status": 0,
+    "log10Lambda": 2.759058642775991
+   },
+   "spec_x0.99": {
+    "min_bfb": 0.0703447641327852,
+    "max_unit": 25.094296323319092,
+    "max_lam": 4.477450937171293,
+    "fail": "unitarity",
+    "solver_status": -1,
+    "log10Lambda": 9.517910485637302
+   },
+   "spec_x1.02": {
+    "min_bfb": null,
+    "max_unit": 0.0,
+    "max_lam": 0.0,
+    "fail": "BFB",
+    "solver_status": 0,
+    "log10Lambda": 2.7600956106787184
+   },
+   "spec_x0.98": {
+    "min_bfb": 0.088746930716956,
+    "max_unit": 24.80019563990372,
+    "max_lam": 5.1371718510650135,
+    "fail": "unitarity",
+    "solver_status": -1,
+    "log10Lambda": 7.474756745532576
+   },
    "rtol_1e-6": {
     "min_bfb": 0.03555445754527711,
     "max_unit": 24.930821092731975,
@@ -1289,6 +1353,6 @@
     "ew_gradient": 2.7755575615628914e-17
    }
   },
-  "code_hash": "3816fe4c301a2861"
+  "code_hash": "10f6c40ede2bc1fe"
  }
 }

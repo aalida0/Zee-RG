@@ -149,7 +149,7 @@ def starts():
     return [(np.array(v['x']), np.array(v['eta'])) for v in src]
 
 
-NPROP = int(os.environ.get('CAMP_NPROP', 15000))        # proposals per chain (fixed length: the stopping rule does not depend on the state)
+NPROP = int(os.environ.get('CAMP_NPROP', 8000))         # proposals per chain (fixed length: the stopping rule does not depend on the state); local pilot: ~0.1 s per proposal incl. gate, so ~15 min inside the 23-min wall
 STORE_PROP = int(os.environ.get('CAMP_STORE', 150))     # a store event every STORE_PROP post-burn-in PROPOSALS (accepted or not)
 NMAX = 400; BURN = 0.25                                 # burn-in = first BURN*NPROP proposals
 
