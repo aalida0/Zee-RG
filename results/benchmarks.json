@@ -252,8 +252,8 @@
    "Hp1_BRtaunu": 2.4431158269544396e-05,
    "Hp1_width": 4.963100260690549,
    "Hp2_BRenu": 0.0,
-   "Hp2_BRmunu": 0.0002250124466742083,
-   "Hp2_BRtaunu": 3.1851946985676815e-06,
+   "Hp2_BRmunu": 0.0001773787998327999,
+   "Hp2_BRtaunu": 2.5109100461618724e-06,
    "Hp2_width": 9.708620424318797,
    "Gamma_H_hh": 0.00027476856190850995,
    "Gamma_h2_h1h": 2.0552507358798238,
@@ -279,7 +279,34 @@
    "HB_allowed": true,
    "HS_chi2": 153.684661619676,
    "rgg": 1.0009178600453474,
-   "HB_most_sensitive": "{'A': <Higgs.bounds.AppliedLimit limitId: 1911102671, obsRatio: 0.376, expRatio: 0.363, for: [\"A\", \"H\"]>, 'H': <Higgs.bounds.AppliedLimit limitId: 1911102671, obsRatio: 0.376, expRatio: 0.363, for: [\""
+   "HB_most_sensitive": "{'A': <Higgs.bounds.AppliedLimit limitId: 1911102671, obsRatio: 0.376, expRatio: 0.363, for: [\"A\", \"H\"]>, 'H': <Higgs.bounds.AppliedLimit limitId: 1911102671, obsRatio: 0.376, expRatio: 0.363, for: [\"",
+   "HB_limits": {
+    "A": {
+     "obsRatio": 0.37568594982699144,
+     "expRatio": 0.36325166741848314,
+     "limitId": 1911102671
+    },
+    "H": {
+     "obsRatio": 0.37568594982699144,
+     "expRatio": 0.36325166741848314,
+     "limitId": 1911102671
+    },
+    "Hp1": {
+     "obsRatio": 0.4169916147839516,
+     "expRatio": 0.31220903084216534,
+     "limitId": 210210076
+    },
+    "Hp2": {
+     "obsRatio": 0.002318175137051943,
+     "expRatio": 0.00216467243702116,
+     "limitId": 210210076
+    },
+    "h": {
+     "obsRatio": 0.7907800239714012,
+     "expRatio": 1.27914941697421,
+     "limitId": 14096212
+    }
+   }
   },
   "dipole_components": {
    "mu_e_g": {
@@ -616,7 +643,7 @@
     "ew_gradient": 2.7755575615628914e-17
    }
   },
-  "code_hash": "76370e9b3ace49dc"
+  "code_hash": "3816fe4c301a2861"
  },
  "BM2": {
   "x": [
@@ -871,8 +898,8 @@
    "Hp1_BRtaunu": 2.2738557606025906e-05,
    "Hp1_width": 0.5780094249830406,
    "Hp2_BRenu": 0.0,
-   "Hp2_BRmunu": 0.0009269359498204485,
-   "Hp2_BRtaunu": 1.3130879123725963e-05,
+   "Hp2_BRmunu": 0.0007746498096710288,
+   "Hp2_BRtaunu": 1.0973609358853684e-05,
    "Hp2_width": 14.760203643315796,
    "Gamma_H_hh": 0.35844159763726907,
    "Gamma_h2_h1h": 2.424951196569049,
@@ -898,7 +925,34 @@
    "HB_allowed": true,
    "HS_chi2": 152.96377525575917,
    "rgg": 1.0109722435930948,
-   "HB_most_sensitive": "{'A': <Higgs.bounds.AppliedLimit limitId: 1911102671, obsRatio: 0.057, expRatio: 0.046, for: [\"A\", \"H\"]>, 'H': <Higgs.bounds.AppliedLimit limitId: 1911102671, obsRatio: 0.057, expRatio: 0.046, for: [\""
+   "HB_most_sensitive": "{'A': <Higgs.bounds.AppliedLimit limitId: 1911102671, obsRatio: 0.057, expRatio: 0.046, for: [\"A\", \"H\"]>, 'H': <Higgs.bounds.AppliedLimit limitId: 1911102671, obsRatio: 0.057, expRatio: 0.046, for: [\"",
+   "HB_limits": {
+    "A": {
+     "obsRatio": 0.05719223610028095,
+     "expRatio": 0.04589002132704381,
+     "limitId": 1911102671
+    },
+    "H": {
+     "obsRatio": 0.05719223610028095,
+     "expRatio": 0.04589002132704381,
+     "limitId": 1911102671
+    },
+    "Hp1": {
+     "obsRatio": 0.05243753443873799,
+     "expRatio": 0.04072646790827944,
+     "limitId": 210210076
+    },
+    "Hp2": {
+     "obsRatio": 0.08398164100143844,
+     "expRatio": 0.0692551982552832,
+     "limitId": 210210076
+    },
+    "h": {
+     "obsRatio": 0.7867287839665318,
+     "expRatio": 1.2725962149038972,
+     "limitId": 14096212
+    }
+   }
   },
   "dipole_components": {
    "mu_e_g": {
@@ -1235,6 +1289,6 @@
     "ew_gradient": 2.7755575615628914e-17
    }
   },
-  "code_hash": "76370e9b3ace49dc"
+  "code_hash": "3816fe4c301a2861"
  }
 }

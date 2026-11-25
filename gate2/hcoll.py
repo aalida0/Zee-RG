@@ -18,6 +18,22 @@ lam = lambda a, b, c: max(a*a + b*b + c*c - 2*a*b - 2*a*c - 2*b*c, 0.0)
 def svw(m1, m2, mv, G):   # Gamma(S1 -> S2 V) for vertex G (p1+p2)^mu
     if m1 <= m2 + mv: return 0.0
     return G**2*lam(m1**2, m2**2, mv**2)**1.5/(16*np.pi*m1**3*mv**2)
+
+def _add_width(X, extra, p, chains):
+    """Add a partial width without a HiggsTools channel to the total width AND rescale every branching ratio of the particle:
+    setTotalWidth alone leaves br() = width/(sum of the set channel widths), so the extra channel would not reduce the BRs."""
+    keys = [d for d in (HP.Decay.enu, HP.Decay.munu, HP.Decay.taunu, HP.Decay.tb) + tuple(getattr(HP.Decay, k) for k in WD.gamma_hp_quarks(300.0, 1.0))]
+    old_t = X.totalWidth(); br_d = [(d, X.br(d)) for d in keys]
+    br_c = []
+    for ch, nn in chains:
+        try:
+            if p.particle(nn) is not None: br_c.append(((ch, nn), X.br(ch, nn)))
+        except Exception: pass
+    X.setTotalWidth(old_t + extra); f = old_t/(old_t + extra)
+    for d, b in br_d: X.setBr(d, b*f)
+    for (ch, nn), b in br_c: X.setBr(getattr(HP.ChainDecay, ch), nn, b*f)
+
+
 def run(x, eta=None):
     x = np.asarray(x, float); e = H.evaluate(list(x), 'NO', eta=eta); sc = e['sc']; f, Y = H.unpack(x); Lam, Dd = H.lepton_couplings(Y, sc)
     tb, sba, cba = sc['tb'], sc['sba'], sc['cba']; c, s = np.cos(sc['phi']), np.sin(sc['phi'])
@@ -71,7 +87,7 @@ def run(x, eta=None):
     out['Gamma_H_hh'] = WD.gamma_Hhh(sc, sc['mH'], 125.5, l7)
     p.particle('H').setTotalWidth(p.particle('H').totalWidth() + out['Gamma_H_hh'])
     out['Gamma_h2_h1h'] = WD.gamma_h2_h1_h(sc, DF.charged_trilinears(sc, l7, l8, l10)['raw_h'])
-    p.particle('Hp2').setTotalWidth(p.particle('Hp2').totalWidth() + out['Gamma_h2_h1h'])
+    _add_width(p.particle('Hp2'), out['Gamma_h2_h1h'], p, [(sc_, n_) for sc_ in ('W',) for n_ in ('h', 'H', 'A')] + [('Z', 'Hp1')])
     for nm in ('Hp1', 'Hp2'):
         out[nm + '_width'] = p.particle(nm).totalWidth()
         for ch, dd in (('BRenu', HP.Decay.enu), ('BRmunu', HP.Decay.munu), ('BRtaunu', HP.Decay.taunu)): out[nm + '_' + ch] = p.particle(nm).br(dd)
@@ -81,5 +97,7 @@ def run(x, eta=None):
     out['DY_status'] = dyr['status']; out['DY_allowed'] = dyr['status'] == 'PASS'; out['DY_S_fb'] = dyr['S_fb']; out['DY_states'] = dyr['states']
     r = _b(p); out['HB_allowed'] = bool(r.allowed); out['HS_chi2'] = float(_s(p)); out['rgg'] = rgg
     try: out['HB_most_sensitive'] = str(r.selectedLimits) [:200]
+    except Exception: pass
+    try: out['HB_limits'] = {k: dict(obsRatio=float(v.obsRatio()), expRatio=float(v.expRatio()), limitId=int(v.limit().id())) for k, v in r.selectedLimits.items()}   # limitId 210210076 = ATLAS H+->tb, 139/fb (arXiv:2102.10076)
     except Exception: pass
     return out, e

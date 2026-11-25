@@ -30,6 +30,7 @@ def run(c, t0, r, g0):
     for t in grid:
         if t > s.t[-1] + 1e-12: return prev/np.log(10), 'integration'
         why = _bad(s.sol(t)[4:])
+        if why and prev == t0 and t == t0: return -1.0, 'start:' + why      # fails at the boundary itself: nothing was verified
         if why:
             lo, hi = prev, t
             for _ in range(10):

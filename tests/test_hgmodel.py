@@ -48,3 +48,13 @@ def test_conversion_component_normalization():
 def test_mu3e_dipole_estimate_ratio():
     o = H.evaluate(X, "NO")["obs"]
     assert 4e-3 < o["mu_3e"] / o["mu_e_g"] < 8e-3     # alpha/3pi (ln(mmu^2/me^2) - 11/4) = 0.0060
+
+
+def test_light_cp_even_state_must_be_the_125_gev_one():
+    import json
+    """A point with M22 < m_h^2 (or nearly degenerate) would make the algebraic lam1 root unphysical: it is penalised, not clamped silently."""
+    from zee import hgmodel as Hm
+    x = np.array(json.load(open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'results', 'benchmarks_input.json')))['BM1']['x'], float)
+    assert Hm.scalar_sector(x)['pen'] == 0.0
+    y = x.copy(); y[12] = np.log10(110.0); y[13] = np.log10(110.0); y[16] = -2.0          # light spectrum, M22 below m_h^2
+    assert Hm.scalar_sector(y)['pen'] > 0.0

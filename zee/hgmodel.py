@@ -86,15 +86,16 @@ def scalar_sector(x):
     mA2 = MHp**2 + 0.5 * V**2 * (lam4 - lam5)
     M22 = mA2 + lam5 * V**2; M12 = lam6 * V**2
     d = M22 - MH**2
-    if abs(d) < 1e-3 * V**2:
-        d = 1e-3 * V**2 * (1 if d >= 0 else -1)
+    degenerate = d < 1e-3 * V**2           # 125.5 GeV must be the LIGHTER CP-even eigenvalue (M22 > m_h^2) and not degenerate with M22;
+    if degenerate:                         # otherwise the algebraic root below is not the physical state: the point is penalised
+        d = 1e-3 * V**2
     M11 = MH**2 + M12**2 / d
     lam1 = M11 / V**2
     mH2 = M11 + M22 - MH**2
     r = -M12 / d
     sba = 1 / np.sqrt(1 + r**2); cba = r * sba
     lam2 = SQ4PI
-    pen = 0.0
+    pen = 1.0 if degenerate else 0.0
     hinge = lambda v: max(0.0, v)
     masses = np.sqrt(np.array([max(m1sq, 1e-6), max(m2sq, 1e-6), max(mA2, 1e-6), max(mH2, 1e-6)]))
     pen += sum(hinge(100.0 - m) / 100.0 for m in masses)

@@ -2,10 +2,8 @@
 # One-time setup on login.af.uchicago.edu. Usage: bash setup.sh   (zee_small.tar.gz must be in $HOME)
 set -e
 Z=$HOME/zee_env; mkdir -p $Z/out $Z/logs; cd $Z
-[ -d repo ] || git clone https://github.com/aalida0/Zee-RG.git repo
-(cd repo && git pull)
+# no shared mutable checkout: per-run frozen checkouts are made by make_run.sh RUN_ID COMMIT
 tar xzf ~/zee_small.tar.gz -C $Z
-cp -r $Z/zee_data/_nufit_cache $Z/repo/zee/_nufit_cache
 cd $Z/zee_data
 [ -d hbdataset ] || git clone https://gitlab.com/higgsbounds/hbdataset.git
 [ -d hsdataset ] || git clone https://gitlab.com/higgsbounds/hsdataset.git

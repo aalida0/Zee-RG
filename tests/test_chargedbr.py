@@ -11,13 +11,16 @@ def test_brs_sum_to_one_and_lepton_dominance():
     assert r['BR'][0]['munu'] > 0.9 and r['width'][1] > 1.0     # light state mu nu, heavy state broad
 
 def test_matches_higgstools():
+    """Total widths AND branching ratios of both paths agree, including the extra h2+ -> h1+ h width (HiggsTools' setTotalWidth does not
+    rescale the BRs: gate2/hcoll._add_width does)."""
     pytest.importorskip('Higgs'); import hcoll
-    for k in B:
-        r = CB.widths_and_brs(B[k]['x'], B[k]['eta']); col, _ = hcoll.run(np.array(B[k]['x']), np.array(B[k]['eta']))
-        for i, n in enumerate(('Hp1', 'Hp2')):
-            assert r['width'][i] == pytest.approx(col[n + '_width'], rel=1e-6)
-            extra = col['Gamma_h2_h1h'] if n == 'Hp2' else 0.0     # HiggsTools keeps the BRs normalised to the width without the extra mode
-            assert r['BR'][i]['munu']*r['width'][i] == pytest.approx(col[n + '_BRmunu']*(col[n + '_width'] - extra), rel=1e-6)
+    for D in (B, NEW):
+        for k in D:
+            r = CB.widths_and_brs(D[k]['x'], D[k]['eta']); col, _ = hcoll.run(np.array(D[k]['x']), np.array(D[k]['eta']))
+            for i, n in enumerate(('Hp1', 'Hp2')):
+                assert r['width'][i] == pytest.approx(col[n + '_width'], rel=1e-6)
+                for ch in ('enu', 'munu', 'taunu'):
+                    assert r['BR'][i][ch] == pytest.approx(col[n + '_BR' + ch], rel=1e-6, abs=1e-6)   # HiggsTools returns 0 for BRs below ~1e-6
 
 
 def test_new_benchmarks_decay_to_tb():
