@@ -9,7 +9,7 @@ import sys, os, numpy as np
 _R = __import__('os').path.dirname(__import__('os').path.dirname(__import__('os').path.abspath(__file__)))
 sys.path.insert(0, _R); sys.path.insert(0, _R + '/gate1')
 import Higgs.predictions as HP, Higgs.bounds as HB, Higgs.signals as HS
-from zee import hgmodel as H, neutrino as N, dy as DY
+from zee import hgmodel as H, neutrino as N, dy as DY, widths as WD, dipfull as DF, chargedbr as CB
 import m_filter_l4w as M
 _b = HB.Bounds(os.environ.get('ZEE_HBDATA', '/tmp/hbdataset')); _s = HS.Signals(os.environ.get('ZEE_HSDATA', '/tmp/hsdataset'))
 V = H.V; MW, MZ, MT, MB = 80.379, 91.1876, 172.5, 4.18; G2 = 2*MW/V; CW = MW/MZ; GF = 1/(np.sqrt(2)*V**2)
@@ -39,7 +39,7 @@ def run(x, eta=None):
         if name == 'H':
             kH = cba + tb*sba; q.tt = kH; q.bb = kH; q.cc = kH; q.ss = kH; q.ZZ = cba; q.WW = cba; q.tautau = k('H', 2); q.mumu = k('H', 1)
         else:
-            q.tt = 1j*tb; q.bb = 1j*tb; q.cc = 1j*tb; q.ss = 1j*tb; q.tautau = k('A', 2); q.mumu = k('A', 1)
+            q.tt = 1j*tb; q.bb = -1j*tb; q.cc = 1j*tb; q.ss = -1j*tb; q.tautau = k('A', 2); q.mumu = k('A', 1)
         HP.effectiveCouplingInput(X, q, reference=HP.ReferenceModel.SMHiggs)
         for d, (i, j) in ((HP.Decay.mutau, (1, 2)), (HP.Decay.etau, (0, 2)), (HP.Decay.emu, (0, 1))): X.setDecayWidth(d, lfv(name, i, j)(ms[name]))
     gZ = G2/(2*CW)
@@ -53,6 +53,7 @@ def run(x, eta=None):
         m = ms[name]; A = tb*w; X = p.addParticle(HP.ChargedScalar(name)); X.setMass(m)
         for dec, i in zip((HP.Decay.enu, HP.Decay.munu, HP.Decay.taunu), range(3)): X.setDecayWidth(dec, GL[kk, i])
         X.setDecayWidth(HP.Decay.tb, 3*GF*m*MT**2*A**2/(4*np.sqrt(2)*np.pi)*(1 - MT**2/m**2)**2 if m > MT + MB else 0.0)
+        for key, w_ in WD.gamma_hp_quarks(m, A).items(): X.setDecayWidth(getattr(HP.Decay, key), w_)
         for nn, cpl in (('h', cba), ('H', sba), ('A', 1.0)): X.setDecayWidth(HP.ChainDecay.W, nn, svw(m, ms[nn], MW, G2/2*w*cpl))
         if name == 'Hp2': X.setDecayWidth(HP.ChainDecay.Z, 'Hp1', svw(m, ms['Hp1'], MZ, gZ*c*s))
         brt = A**2*(1 - m**2/MT**2)**2/((1 - MW**2/MT**2)**2*(1 + 2*MW**2/MT**2)) if m < MT - MB else 0.0; brt = brt/(1 + brt)
@@ -64,8 +65,19 @@ def run(x, eta=None):
         for hp, w in (('Hp1', c), ('Hp2', s)):
             cpl = (sba if name == 'H' else 1.0)*w
             p.particle(name).setDecayWidth(HP.ChainDecay.W, hp, 2*svw(ms[name], ms[hp], MW, G2/2*cpl))
+    # two-body decays into scalars without a HiggsTools channel: added to the total widths (BRs of the other channels shrink)
+    l7 = float(eta[1]) if eta is not None else 0.0; l8 = float(eta[2]) if eta is not None else 0.0; l10 = float(eta[4]) if eta is not None else 0.0
+    out['Gamma_H_hh'] = WD.gamma_Hhh(sc, sc['mH'], 125.5, l7)
+    p.particle('H').setTotalWidth(p.particle('H').totalWidth() + out['Gamma_H_hh'])
+    out['Gamma_h2_h1h'] = WD.gamma_h2_h1_h(sc, DF.charged_trilinears(sc, l7, l8, l10)['raw_h'])
+    p.particle('Hp2').setTotalWidth(p.particle('Hp2').totalWidth() + out['Gamma_h2_h1h'])
+    for nm in ('Hp1', 'Hp2'):
+        out[nm + '_width'] = p.particle(nm).totalWidth()
+        for ch, dd in (('BRenu', HP.Decay.enu), ('BRmunu', HP.Decay.munu), ('BRtaunu', HP.Decay.taunu)): out[nm + '_' + ch] = p.particle(nm).br(dd)
     # Drell-Yan h+ h- vs LHC slepton searches (zee/dy.py): doublet fractions cos^2(phi) for h1+, sin^2(phi) for h2+
-    out['DY_allowed'], out['DY_S_fb'] = DY.dy_allowed([ms['Hp1'], ms['Hp2']], [c*c, s*s], [out['Hp1_BRenu'], out['Hp2_BRenu']], [out['Hp1_BRmunu'], out['Hp2_BRmunu']])
+    cbr = CB.widths_and_brs(x, e['eta'] if 'eta' in e else eta); br = cbr['BR']   # same widths as above, normalised to the full total width
+    dyr = DY.decide(cbr['m'], cbr['d'], [b['enu'] for b in br], [b['munu'] for b in br], [b['taunu'] for b in br])
+    out['DY_status'] = dyr['status']; out['DY_allowed'] = dyr['status'] == 'PASS'; out['DY_S_fb'] = dyr['S_fb']; out['DY_states'] = dyr['states']
     r = _b(p); out['HB_allowed'] = bool(r.allowed); out['HS_chi2'] = float(_s(p)); out['rgg'] = rgg
     try: out['HB_most_sensitive'] = str(r.selectedLimits) [:200]
     except Exception: pass
