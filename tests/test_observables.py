@@ -81,3 +81,13 @@ def test_higgs_lfv_from_y2_only_offdiagonal():
     br = O.higgs_lfv_br(1, 2, Y2, tb, 0.1)
     g = O.M_H / (8 * np.pi) * (0.1 * 0.01 / cb) ** 2 / 2
     assert np.isclose(br, g / (O.GAMMA_H_SM + g), rtol=1e-12)
+
+
+def test_dipole_conversion_ratio_from_overlap_integrals():
+    """CR(mu->e, N) / BR(mu->e gamma) = pi D^2 Gamma_mu / Gamma_capt for dipole dominance (Kitano-Koike-Okada, hep-ph/0203110 normalisation
+    BR = 384 pi^2 (|A_L|^2 + |A_R|^2), Gamma_conv = 2 G_F^2 |A D|^2): D(Al) = 0.0362, D(Au) = 0.189 (units m_mu^{5/2}),
+    Gamma_capt(Al) = 0.7054e6/s, Gamma_capt(Au) = 13.07e6/s; the model uses 2.67e-3 and 3.9e-3."""
+    import numpy as np
+    gmu = 1/2.1969811e-6
+    assert abs(np.pi*0.0362**2*gmu/0.7054e6/2.67e-3 - 1) < 0.02
+    assert abs(np.pi*0.189**2*gmu/13.07e6/3.9e-3 - 1) < 0.02

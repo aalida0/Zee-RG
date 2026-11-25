@@ -13,6 +13,7 @@ N_PER_DEC = 10
 VARIANTS = ('default', 'match_x0.5', 'matchH_x0.5', 'qscale_1.1', 'sm_yt_1.02')
 FULL = ('default', 'match_x0.5', 'match_x1', 'match_x2', 'matchH_x0.5', 'matchH_x1', 'matchH_x2', 'qscale_1.1', 'qscale_0.9',
         'sm_yt_1.02', 'sm_yt_0.98', 'sm_gs_1.03', 'sm_gs_0.97')
+SENS = ('spec_x1.01', 'spec_x0.99', 'spec_x1.02', 'spec_x0.98')   # threshold-like sensitivity of the boundary spectrum, reported, not part of the minimum
 G0 = np.array([0.36, 0.64, 1.05, 0.88]); LOG16 = np.log(1e16)
 
 
@@ -49,6 +50,9 @@ def cert(x, eta, variants=VARIANTS):
         elif p.startswith('match_'): mu0 = max(172.5, ml*float(p.split('_x')[1])); v = run(c, np.log(mu0), r, bench.sm_run(mu0))
         elif p.startswith('matchH'): mu0 = max(172.5, max(sc['mH'], sc['mA'], sc['m2'])*float(p.split('_x')[1])); v = run(c, np.log(mu0), r, bench.sm_run(mu0))
         elif p.startswith('qscale'): v = run(c*float(p.split('_')[1]), t0, r, G0)
+        elif p.startswith('spec_'):      # physically consistent boundary shift (bench.spec_shift): M_H+ scaled by f at fixed m_H, m_A, m_h, lambda_4 re-solved
+            f = float(p.split('_x')[1]); x2 = bench.spec_shift(x, f)
+            sc2, c2 = bench.coup(x2, eta); v = run(c2, np.log(min(sc2['m1'], sc2['mA'], sc2['mH'])), -sc2['tb'], G0)
         elif p.startswith('sm_'):
             kind, k = p.split('_')[1], float(p.split('_')[2]); g = np.array(bench.SM_MT, float); g[3 if kind == 'yt' else 2] *= k
             v = run(c, t0, r, bench.sm_run(max(172.5, ml), start=tuple(g)))

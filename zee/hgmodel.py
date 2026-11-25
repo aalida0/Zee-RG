@@ -47,14 +47,14 @@ MODERN = _os.environ.get("ZEE_INPUTS", "hg") == "modern"
 ING = set("osc lfv cr cosmo amu univ".split()) if MODERN else set(filter(None, _os.environ.get("ZEE_ING", "").split(",")))
 if "lfv" in ING:
     BOUNDS.update(mu_e_g=(1.5e-13, 1.645), tau_3mu=(1.9e-8, 1.645), tau_mu_g=(4.2e-8, 1.645), h_tau_mu=(0.0018, 1.949), h_tau_e=(0.0020, 1.949))
-if "cosmo" in ING: BOUNDS.update(m_beta=(0.45, 1.949), sum_m=(0.072, 1.949))
+if "cosmo" in ING: BOUNDS.update(m_beta=(0.45, 1.949), sum_m=(float(_os.environ.get("ZEE_SUMM_LIMIT", 0.072)), 1.949))  # ZEE_SUMM_LIMIT: sensitivity runs, e.g. 0.0642 (DESI DR2 combination)
 if "univ" in ING: UNIV["tm"] = (1.0011, 0.0014)
 if "osc" in ING:
     from zee import nufit as _nf
     _NF = {}
 if MODERN:  # 2025-26 inputs: MEG II, Belle II, ATLAS h->l tau, HFLAV 2023, KATRIN 2025, DESI DR2
     BOUNDS.update(mu_e_g=(1.5e-13, 1.645), tau_3mu=(1.9e-8, 1.645), tau_mu_g=(4.2e-8, 1.645),
-                  h_tau_mu=(0.0018, 1.949), h_tau_e=(0.0020, 1.949), m_beta=(0.45, 1.949), sum_m=(0.072, 1.949))
+                  h_tau_mu=(0.0018, 1.949), h_tau_e=(0.0020, 1.949), m_beta=(0.45, 1.949), sum_m=(float(_os.environ.get("ZEE_SUMM_LIMIT", 0.072)), 1.949))  # ZEE_SUMM_LIMIT: sensitivity runs, e.g. 0.0642 (DESI DR2 combination)
     # HFLAV-Tau 2023 (2411.18639; hflav-eos .../end-2023/lepton-univ.html eqs. 6-8, pure leptonic): g_tau/g_mu, g_tau/g_e, g_mu/g_e,
     # with the Table-5 correlations (+0.67, -0.41, +0.40; transcribed from a garbled page, positive-definite, near-singular since
     # g_mu/g_e = (g_tau/g_e)/(g_tau/g_mu)).  Keys: tm = A(tau->e)/A(mu->e) = g_tau/g_mu, te = A(tau->mu)/A(mu->e) = g_tau/g_e,

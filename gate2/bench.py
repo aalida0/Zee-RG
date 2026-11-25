@@ -67,3 +67,15 @@ def analyse(x, eta):
     res['vacuum'] = deep_vacuum(c, sc)
     res['quartics_start'] = dict(zip(['l1', 'l2', 'l3', 'l4', 'l5', 'l6', 'l7', 'l8', 'l9', 'l10', 'lh'], map(float, c)))
     return res
+
+
+def spec_shift(x, f):
+    """Physically consistent shift of one mass parameter of the boundary spectrum: the doublet charged-mass parameter M_H+ -> f M_H+ at FIXED m_H, m_A, m_h,
+    M_33 and mu (u -> u/f), with lambda_4 re-solved from m_A^2 = M_H+^2 + v^2 (lambda_4 - lambda_5)/2.  Unlike scaling the quartics, the spectrum of the neutral
+    states is held; the shift of lambda_4 is 2 (1 - f^2) M_H+^2/v^2 (about 0.3 for a 1% shift at 650 GeV), a threshold-like quartic shift."""
+    from zee import V_EW
+    x2 = np.array(x, float).copy(); MHp = 10**x2[12]; l4, l5 = x2[18], x2[16]
+    mA2 = MHp**2 + 0.5*V_EW**2*(l4 - l5)
+    x2[12] = np.log10(MHp*f); x2[14] = x2[14]/f
+    x2[18] = l5 + 2*(mA2 - (MHp*f)**2)/V_EW**2
+    return x2

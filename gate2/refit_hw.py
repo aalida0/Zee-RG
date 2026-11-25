@@ -11,7 +11,7 @@ from scipy.optimize import least_squares
 from zee import hgmodel as H
 import accept as AC
 ORD = os.environ.get('ORD', 'NO')   # mass ordering of the fit (NO default; IO for the ordering difference)
-S0 = 1e-6; ZM = np.arcsinh(AC.FMAX/S0); SQ = np.sqrt(4*np.pi); EB = AC.ETA_MAX
+S0 = 1e-6; ZM = np.arcsinh(AC.FMAX/S0); SQ = np.sqrt(4*np.pi); EB = float(os.environ.get('ETA_BOX', AC.ETA_MAX)); TAG = os.environ.get('TAG', '')   # ETA_BOX: restrict free quartics (constrained-reference sensitivity); TAG: output suffix
 LO = np.append(H.LO, -SQ)[:19].copy(); HI = np.append(H.HI, SQ)[:19].copy(); LO[:11] = -ZM; HI[:11] = ZM
 tx = lambda z: np.concatenate([S0*np.sinh(z[:11]), z[11:19]])
 tz = lambda x: np.concatenate([np.arcsinh(np.clip(np.asarray(x[:11], float), -AC.FMAX, AC.FMAX)/S0), np.asarray(x[11:19], float)])
@@ -45,5 +45,5 @@ if __name__ == '__main__':
     with Pool(NP) as P: R = list(P.imap_unordered(run, jobs))
     R = sorted([r for r in R if np.isfinite(r['chi2'])], key=lambda r: r['chi2'])
     json.dump(dict(best=R[0], all=R[:50], note='production statistic with H+-W-gamma set, |x|<=0.1, lambda7,8,10 in [-3,3]'),
-              open(os.path.join(ROOT, 'results', 'refit_hw.json' if ORD == 'NO' else 'refit_hw_%s.json' % ORD), 'w'), indent=1)
+              open(os.path.join(ROOT, 'results', ('refit_hw.json' if ORD == 'NO' else 'refit_hw_%s.json' % ORD) if not TAG else 'refit_hw_%s.json' % TAG), 'w'), indent=1)
     print('done %.0fs' % (time.time() - t0), 'best chi2', R[0]['chi2'], 'eta', R[0]['eta'], 'top5', [round(r['chi2'], 3) for r in R[:5]], flush=True)

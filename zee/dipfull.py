@@ -112,8 +112,13 @@ def bz_HW(Dd, mass, sc, trilin):
     Checks (tests): diagonal limit against an independent quadrature of Ilisie's typeset formulae, charged-mass-basis independence
     for degenerate states, decoupling, and the paper's own benchmark for set (4) (M_H+ = 90 GeV, varsigma_u varsigma_l = -50 gives
     ~33% of Delta a_mu = 262e-11, the paper quotes ~35%; the sign is positive for negative varsigma_u varsigma_l as stated there).
-    NOT checked against an independent two-loop calculation, and the equations were compared with a machine-extracted text of the
-    paper, so the production gate still varies HW_SCALE in {0, 1, -1}.  G1(w) = G(1, w) follows from the common structure
+    Independent check (gate2/check_gm2calc.py, results/gm2calc_check.json): the diagonal Delta a_mu of the complete code with HW_SCALE = +1 is
+    0.90-0.98 of GM2Calc 2.x (full two-loop aligned 2HDM) for M_H+ = 90-400 GeV, the opposite sign (-1) gives 0.15-0.36 and HW off
+    0.53-0.65; GM2Calc's own running-coupling option moves its result by 7%.  This validates the sign, normalisation and mass
+    dependence of set (4) (exact alignment, where sets (5), (6) vanish).  Off-diagonal entries: the operator is lbar_L,J sigma F Dd[J,I] l_R,I
+    times a flavour-universal coefficient (Dd enters once, the W vertex is diagonal in the neutrino flavour = J, no lepton mass enters the
+    loop at leading order), so the diagonal check fixes I != J as well (spurion argument, U(3)_L x U(3)_R covariance).  Sets (5), (6) have no
+    independent numerical check, so the production gate still varies HW_SCALE in {0, 1, -1}.  G1(w) = G(1, w) follows from the common structure
     [F(M_H+) - F(M_W)] of Eqs. (22)-(24).  At the benchmarks tau->mu gamma is controlled by set (4) alone (sets (5), (6) change it
     by < 5%); HW_SET_SIGN allows flipping each set separately for this bracketing."""
     if "raw_h" not in trilin:

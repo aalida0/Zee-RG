@@ -204,3 +204,19 @@ def test_hw_set4_reproduces_ilisie_amu_benchmark():
     a4 = DF.ALPHA*DF.M[1]**2*3/(32*np.pi**3*DF.SW2*DF.V**2*dm)*I
     frac = -50*a4/262e-11
     assert 0.25 < frac < 0.45
+
+
+def test_hw_set4_matches_gm2calc():
+    """Frozen GM2Calc 2.x numbers (gate2/check_gm2calc.py): aligned 2HDM, tanb=1, zeta_u=zeta_d=-1, zeta_l=30, M^2=M_H+^2.
+    The complete diagonal a_mu with HW_SCALE=+1 must lie within 12% of GM2Calc; the opposite sign and HW off are excluded."""
+    import sys, os
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'gate2'))
+    from check_gm2calc import code
+    ref = {(90, 150, 170): 1.576e-9, (200, 250, 250): 1.106e-9, (300, 300, 300): 9.097e-10, (400, 420, 430): 6.800e-10}
+    try:
+        for (mHp, mH, mA), g in ref.items():
+            r = {h: code(mHp, mH, mA, mHp**2, -1, -1, 30, h) / g for h in (1, 0, -1)}
+            assert 0.88 < r[1] < 1.0 and r[0] < 0.7 and r[-1] < 0.4
+    finally:
+        D.HW_SCALE = 1.0
+        import importlib; importlib.reload(D)

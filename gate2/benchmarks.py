@@ -38,6 +38,9 @@ def piece(x, eta, p):
         f = float(p.split('_x')[1]); mh = max(sc['mH'], sc['mA'], sc['m2']); mu0 = max(172.5, mh*f); out = dict(bench.trajectory(c, np.log(mu0), r, bench.sm_run(mu0)), mu0=mu0)
     elif p.startswith('qscale'):      # relative shift of all boundary quartics, a conservative proxy for one-loop threshold corrections
         k = float(p.split('_')[1]); out = bench.trajectory(c*k, t0, r, G0)
+    elif p.startswith('spec_'):       # physically consistent shift (bench.spec_shift): M_H+ scaled by f at fixed m_H, m_A, m_h; lambda_4 re-solved from the mass relation
+        f = float(p.split('_x')[1]); x2 = bench.spec_shift(x, f)
+        sc2, c2 = bench.coup(x2, eta); out = bench.trajectory(c2, np.log(min(sc2['m1'], sc2['mA'], sc2['mH'])), -sc2['tb'], G0)
     elif p.startswith('sm_'):         # sensitivity to the SM inputs at m_t: y_t +-2%, g_s +-3%
         kind, k = p.split('_')[1], float(p.split('_')[2]); g = np.array(bench.SM_MT, float); g[3 if kind == 'yt' else 2] *= k
         out = bench.trajectory(c, t0, r, bench.sm_run(max(172.5, ml), start=tuple(g)))
@@ -48,9 +51,9 @@ def piece(x, eta, p):
     pickle.dump(out, open(fn, 'wb')); return out
 
 
-PIECES = ['default', 'match_x0.5', 'match_x1', 'match_x2', 'matchH_x0.5', 'matchH_x1', 'matchH_x2', 'qscale_1.1', 'qscale_0.9', 'sm_yt_1.02', 'sm_yt_0.98', 'sm_gs_1.03', 'sm_gs_0.97',
+PIECES = ['default', 'match_x0.5', 'match_x1', 'match_x2', 'matchH_x0.5', 'matchH_x1', 'matchH_x2', 'qscale_1.1', 'qscale_0.9', 'sm_yt_1.02', 'sm_yt_0.98', 'sm_gs_1.03', 'sm_gs_0.97', 'spec_x1.01', 'spec_x0.99', 'spec_x1.02', 'spec_x0.98',
           'rtol_1e-6', 'rtol_1e-10', 'grid_300', 'vacuum']
-TRAJ = [p for p in PIECES if p != 'vacuum']
+TRAJ = [p for p in PIECES if p != 'vacuum' and not p.startswith('spec_')]   # spec_* are reported as sensitivity (they move the boundary point), not part of the minimum
 
 
 def record(name, x, eta, cmin):
