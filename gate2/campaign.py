@@ -218,7 +218,7 @@ if __name__ == '__main__':
     Lcur = coarse_reach(info); climb = Lcur < walk_cut              # a start below the cutoff (in the coarse score of ALL boundary variants) first climbs (burn-in)
     cur = obs_of(info, key) if key else 0.0; step = 0.01; n = acc = 0; nacc_win = nwin = 0; acc_post = n_post = 0
     Lc = None; m_n = 0; m_mu = np.zeros(25); m_M2 = np.zeros((25, 25)); best = None; best_unres = None; rej = {}; t0 = time.time(); tlast = t0; ncert = 0; tcert = 0.0
-    cur_inf = info; cur_id = 0; recs = {}; trace = []; complete = False; bests = []
+    cur_inf = info; cur_id = 0; recs = {}; trace = []; complete = False; bests = []; n_enter = None
 
     def make_rec(z_, inf_, rid):
         global ncert, tcert
@@ -232,7 +232,7 @@ if __name__ == '__main__':
         tmp = fn + '.tmp'
         with open(tmp, 'w') as fh:
             json.dump(clean(dict(mode=mode, logL=logL, seed=seed, start=si, code=CODE, manifest=MAN, cmin=CMIN, higgs=HAVE_HIGGS, complete=complete,
-                       n_prop=n, n_acc=acc, nprop_target=NPROP, store_every_proposals=STORE_PROP, step=step, burn=BURN, acc_post=acc_post, n_post=n_post,
+                       n_prop=n, n_acc=acc, nprop_target=NPROP, store_every_proposals=STORE_PROP, step=step, burn=BURN, acc_post=acc_post, n_post=n_post, n_enter=n_enter, climb_at_end=bool(climb),
                        n_cert=ncert, t_cert=tcert, wall=time.time()-t0, rejects=rej, points=pts, trace=trace, best=best, best_unresolved=best_unres, best_archive=bests, margin=MARGIN, rescaled=RESC,
                        measure=('uniform in z on the region R_L (cheap gate + coarse cutoff); Yukawas in arcsinh(x/1e-6); stored = the current state '
                                 'every %d proposals, repeated states carry dwell counts' % STORE_PROP) if not key else 'optimiser (no stationary measure)')),
@@ -249,8 +249,9 @@ if __name__ == '__main__':
         elif r_['final_status'] == 'UNRESOLVED': best_unres = r_
         else: rej['best_failed_' + r_['vacuum']] = rej.get('best_failed_' + r_['vacuum'], 0) + 1
 
-    if key and not climb: consider_best(zc, info, 0)                  # a valid start is a candidate best before any proposal is accepted
+    if key and (not climb or coarse_reach(info) >= logL): consider_best(zc, info, 0)                  # a valid start is a candidate best before any proposal is accepted
 
+    n_enter = None if climb else 0                       # proposal index at which the chain first stands inside the walk target (0: valid from the start, None: never)
     while n < NPROP and time.time() - t0 < wall:
         burn = climb or n < BURN*NPROP
         if Lc is None:                                   # isotropic start-up proposal until a covariance is available
@@ -274,10 +275,11 @@ if __name__ == '__main__':
             zc = zn; acc += 1; nacc_win += 1; cur_id += 1; cur_inf = inf
             if climb:
                 Lcur = coarse_reach(inf); climb = Lcur < walk_cut
+                if not climb and n_enter is None: n_enter = n
             if not burn: acc_post += 1
-            if key and not climb:
-                cur = obs_of(inf, key)
-                if cur > max(best['obs'][key] if best else 0.0, best_unres['obs'][key] if best_unres else 0.0)*1.02:
+            if key and (not climb or coarse_reach(inf) >= logL):        # a state that already meets the REQUESTED cutoff is a candidate even if the optional extra-decade walk margin is not yet reached
+                if not climb: cur = obs_of(inf, key)
+                if obs_of(inf, key) > max(best['obs'][key] if best else 0.0, best_unres['obs'][key] if best_unres else 0.0)*1.02:
                     consider_best(zn, inf, acc)
         if not key and not burn:                         # proposal-indexed storage: rejected proposals repeat the current state
             n_post += 1

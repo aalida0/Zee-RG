@@ -56,6 +56,18 @@ PIECES = ['default', 'match_x0.5', 'match_x1', 'match_x2', 'matchH_x0.5', 'match
 TRAJ = [p for p in PIECES if p != 'vacuum' and not p.startswith('spec_')]   # spec_* are reported as sensitivity (they move the boundary point), not part of the minimum
 
 
+def rg_status_of(fails_, reach):
+    """(start_fail, unresolved, label) of the RG part from the per-variant first-failure reasons.  'start:*' = a condition is violated at the matching
+    scale itself (no scale is demonstrated, fail); 'integration' (solver stopped early) and 'nonfinite' (a coupling became non-finite) are NUMERICAL stops:
+    the last good scale is a demonstrated prefix (a valid lower bound on the scale) but not a physical failure scale, so the record is UNRESOLVED
+    (fail closed) and must not be quoted as a cutoff.  Anything else (unitarity, perturbativity, BFB, BFB?) is a physical first failure."""
+    reasons = [str(v) for v in fails_.values()]
+    start_fail = any(v.startswith('start') for v in reasons)
+    numerical = any(v in ('integration', 'nonfinite') for v in reasons) or not np.isfinite(reach)
+    label = 'start-fail' if start_fail else ('unresolved (numerical stop: demonstrated prefix only)' if numerical else 'ok')
+    return start_fail, numerical, label
+
+
 def record(name, x, eta, cmin):
     x = np.asarray(x, float); eta = np.asarray(eta, float)
     a = AC.accept(x, eta, cmin, n_vac=80)
@@ -70,8 +82,7 @@ def record(name, x, eta, cmin):
     _, c = bench.coup(x, eta)
     reach = min(rob[p]['log10Lambda'] for p in TRAJ); vac_ok = bool(rob['vacuum']['global_ok'])
     fails_ = {p: str(rob[p].get('fail')) for p in TRAJ}
-    start_fail = any(v.startswith('start') for v in fails_.values()); unres_rg = any(v == 'integration' for v in fails_.values()) or not np.isfinite(reach)
-    rg_status = 'start-fail' if start_fail else ('unresolved (integration/non-finite)' if unres_rg else 'ok')   # status of the RG part; 'integration' is not a physical failure
+    start_fail, unres_rg, rg_status = rg_status_of(fails_, reach)
     le_status = 'PASS' if (a['status'] == 'PASS' and vac_ok) else ('FAIL' if a['status'] == 'FAIL' or not vac_ok else 'UNRESOLVED')
     final = 'FAIL' if (le_status == 'FAIL' or start_fail) else ('UNRESOLVED' if (le_status == 'UNRESOLVED' or unres_rg) else 'PASS')
     return dict(x=x, eta=eta, accepted=(final == 'PASS'), status=final, low_energy_vacuum_status=le_status, rg_status=rg_status, certified_log10_scale=float(reach), scope='one-loop, tree-level-boundary scalar-consistency estimate (not a UV-completion scale)',

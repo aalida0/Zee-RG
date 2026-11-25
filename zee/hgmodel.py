@@ -76,6 +76,15 @@ def unpack(x):
     return f, Y
 
 
+def rescale_fixed_nu(x, tbv):
+    """Carry a point to tan(beta)=tbv with the leading neutrino mass matrix unchanged (scalar masses and mixing fixed): M_nu depends on
+    f*tan(beta) and Y2/sin(beta) only (Eq. mnu_hg_leading), so f -> f tb0/tb (indices 0,1 = the two singlet couplings) and
+    Y2 -> Y2 sin(beta)/sin(beta0) (indices 2..10 = the doublet couplings, real and imaginary parts); ln tan(beta) is index 11."""
+    x1 = np.array(x, float); tb0 = np.exp(x1[11]); sb = lambda t: t / np.sqrt(1 + t * t)
+    x1[:2] *= tb0 / tbv; x1[2:11] *= sb(tbv) / sb(tb0); x1[11] = np.log(tbv)
+    return x1
+
+
 def scalar_sector(x):
     """Return dict or None if unphysical; plus 'pen' (hinge sum for stability/perturbativity/>100 GeV)."""
     tb = np.exp(x[11]); MHp = 10 ** x[12]; M33 = 10 ** x[13]

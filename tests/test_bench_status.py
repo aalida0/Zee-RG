@@ -26,3 +26,15 @@ def test_yukawa_perturbativity_cut():
     assert H.yukawa_max(x, sc) < 1.0
     x2 = x.copy(); x2[2:11] *= 1000
     assert H.yukawa_max(x2, sc) > H.YUK_MAX
+
+
+def test_rg_status_numerical_stops_are_not_physical_cutoffs():
+    """report v9 5.5: 'integration' and 'nonfinite' (finite last-good reach) are numerical stops = unresolved prefix; start failures fail;
+    only physical first failures give 'ok'."""
+    import benchmarks as B
+    ok = dict(a='unitarity', b='perturbativity', c='BFB', d='None')
+    assert B.rg_status_of(ok, 11.6) == (False, False, 'ok')
+    assert B.rg_status_of(dict(ok, e='nonfinite'), 11.6)[1:] == (True, 'unresolved (numerical stop: demonstrated prefix only)')
+    assert B.rg_status_of(dict(ok, e='integration'), 11.6)[1] is True
+    assert B.rg_status_of(dict(ok, e='start:BFB'), -1.0)[:1] == (True,) and B.rg_status_of(dict(ok, e='start:BFB'), -1.0)[2] == 'start-fail'
+    assert B.rg_status_of(ok, float('nan'))[1] is True

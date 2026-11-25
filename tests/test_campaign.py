@@ -83,3 +83,16 @@ def test_stage_gate_enforces_all_boundary_variants_for_target():
     ok, info, why = C.stage_gate(x, eta, 11.0); assert not ok and why == 'cutoff'
     ok, info, why = C.stage_gate(x, eta, 10.5); assert ok and abs(info['Lmin'] - C.coarse_reach(info)) < 1e-12 and info['Lmin'] < info['Lf']
     ok, info, why = C.stage_gate(x, eta, -1.0, rescaled=False); assert ok and 'Lf_q1.1' not in info and info['Lmin'] == info['Lf']
+
+
+def test_chain_classification_and_rank_norm():
+    """report v9 5.3: explicit chain classes; a chain that entered the target too late, or never, is COMPLETE_NO_TARGET and cannot pass the convergence flag"""
+    import collect_campaign as CC
+    base = dict(complete=True, n_prop=8000, nprop_target=8000, burn=0.25, rejects={}, climb_at_end=False)
+    assert CC.classify(dict(base, n_enter=0)) == 'COMPLETE_TARGET_SAMPLED'
+    assert CC.classify(dict(base, n_enter=7000)) == 'COMPLETE_NO_TARGET'          # <2000 proposals left after entry
+    assert CC.classify(dict(base, n_enter=None, climb_at_end=True)) == 'COMPLETE_NO_TARGET'
+    assert CC.classify(dict(base, complete=False, n_prop=3000, n_enter=0)) == 'TIMEOUT'
+    assert CC.classify(dict(base, n_enter=0, rejects={'hcoll_error:RuntimeError': 5000})) == 'NUMERICAL_FAILURE'
+    import numpy as np
+    z = CC.rank_norm([np.array([1., 2., 3.]), np.array([10., 20., 30.])]); assert np.all(np.isfinite(np.concatenate(z))) and abs(np.concatenate(z).mean()) < 0.1
