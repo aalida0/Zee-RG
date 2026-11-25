@@ -4,7 +4,7 @@
  - charged scalars h1+, h2+ with l nu, t b, W h/H/A and (h2+) h1+ Z decays, pp -> t b h+ and t -> b h+,
  - A -> Z h, H -> Z A, A -> Z H, H/A -> h+- W-+ where open.
 pp -> h+ h- (Drell-Yan) is confronted with slepton searches via zee/dy.py.
-Decays into three scalars (H -> hh, h2+ -> h1+ h) are not included."""
+H -> hh and h2+ -> h1+ h are added to the total widths (zee/widths.py); other three-body decays are not included."""
 import sys, os, numpy as np
 _R = __import__('os').path.dirname(__import__('os').path.dirname(__import__('os').path.abspath(__file__)))
 sys.path.insert(0, _R); sys.path.insert(0, _R + '/gate1')
