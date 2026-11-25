@@ -19,11 +19,11 @@ def bsg(sc):
         C7 += A2*(F7_1(y)/3 - F7_2(y)); C8 += A2*(F8_1(y)/3 - F8_2(y))
     return 3.36 - 8.22*C7 - 1.99*C8
 def charged(p, x, sc, Y):
-    f, _ = H.unpack(np.array(x)); D = N.d_matrix(H.M_LEP, Y, sc['tb']); y2 = 2*f
+    f, _ = H.unpack(np.array(x)); _, D = H.lepton_couplings(Y, sc); y2 = 2*f   # Dd (Y2^dag), see gate2/hcoll.py
     tb, c, s = sc['tb'], np.cos(sc['phi']), np.sin(sc['phi']); out = []
     for name, w, ws, m in (('Hp1', c, s, sc['m1']), ('Hp2', s, c, sc['m2'])):
         A = tb*w; X = p.addParticle(HP.ChargedScalar(name)); X.setMass(m)
-        lep = [m/(16*np.pi)*(w**2*np.sum(abs(D[:, i])**2) + ws**2*np.sum(abs(y2[:, i])**2)) for i in range(3)]
+        lep = list(H.charged_lepton_widths(f, D, sc)[0 if name == 'Hp1' else 1])
         tbw = 3*GF*m*MT**2*A**2/(4*np.sqrt(2)*np.pi)*(1 - MT**2/m**2)**2 if m > MT + MB else 0.0
         for dec, g in zip((HP.Decay.enu, HP.Decay.munu, HP.Decay.taunu), lep): X.setDecayWidth(dec, g)
         X.setDecayWidth(HP.Decay.tb, tbw)

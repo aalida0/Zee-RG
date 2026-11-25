@@ -21,17 +21,23 @@ def coup(x, eta):
     return sc, c
 def margins(c):
     return bfb2.min_vred(c, refine=3), vac.unit_max(c), np.abs(c).max()
-def fails(c):
+BFB_TOL = 1e-6     # |V_red| below this is numerically unresolved, not "bounded"
+def fails(c, with_margins=False):
+    """first violated condition at c, or None. Non-finite input fails; a BFB margin within BFB_TOL of zero is 'BFB?'
+    (unresolved) and counts as a failure for the cutoff (fail closed)."""
+    if not np.all(np.isfinite(c)): return ('nonfinite', None) if with_margins else 'nonfinite'
     vb, u, mx = margins(c)
-    return ('BFB' if vb < -1e-6 else None) or ('unitarity' if u > 8*np.pi else None) or ('perturbativity' if mx > CM else None)
+    why = ('BFB' if vb < -BFB_TOL else None) or ('BFB?' if vb < BFB_TOL else None) or ('unitarity' if u > 8*np.pi else None) or ('perturbativity' if mx > CM else None)
+    return (why, (vb, u, mx)) if with_margins else why
 def trajectory(c0, t0, r, g, n_per_dec=100, rtol=1e-8):
-    z0 = np.concatenate([g, c0]); grid = np.arange(t0, LOG16, np.log(10)/n_per_dec)
+    z0 = np.concatenate([g, c0]); grid = np.append(np.arange(t0, LOG16, np.log(10)/n_per_dec), LOG16)   # endpoint included
     s = solve_ivp(R.rhs_r(r), (t0, LOG16), z0, dense_output=True, rtol=rtol, atol=rtol*1e-2)
-    out = dict(min_bfb=np.inf, max_unit=0.0, max_lam=0.0, fail=None, Lambda=LOG16)
+    out = dict(min_bfb=np.inf, max_unit=0.0, max_lam=0.0, fail=None, Lambda=LOG16, solver_status=int(s.status))
     prev = t0
     for t in grid:
-        if t > s.t[-1]: out.update(fail='integration', Lambda=prev); break
-        c = s.sol(t)[4:]; vb, u, mx = margins(c); why = fails(c)
+        if t > s.t[-1] + 1e-12: out.update(fail='integration', Lambda=prev); break   # solver stopped early
+        c = s.sol(t)[4:]; why, mg = fails(c, True)
+        if why is None: vb, u, mx = mg
         if why:
             lo, hi = prev, t      # bracket the first failure
             for _ in range(30):
@@ -40,19 +46,14 @@ def trajectory(c0, t0, r, g, n_per_dec=100, rtol=1e-8):
                 else: lo = mid
             out.update(fail=why, Lambda=lo); break
         out['min_bfb'] = min(out['min_bfb'], vb); out['max_unit'] = max(out['max_unit'], u); out['max_lam'] = max(out['max_lam'], mx); prev = t
+    if out['fail'] is None and prev < LOG16 - 1e-9: out.update(fail='integration', Lambda=prev)
     out['log10Lambda'] = out.pop('Lambda')/np.log(10); return out
 def deep_vacuum(c, sc, n=2000, seed=0):
-    rng = np.random.default_rng(seed); V = H.V
-    l1, l3, l6, l8 = c[0], c[2], c[5], c[7]
-    args = (c, -l1/2, (sc['MHp']**2 - 0.5*V**2*l3)/V**2, l6/2, (sc['M33']**2 - 0.5*V**2*l8)/V**2, sc['mu']/V)
-    f = lambda p: float(vac.vfull(p, *args)); vew = -l1/8; mins = []
-    for k in range(n):
-        p0 = rng.normal(size=10); p0 *= np.exp(rng.uniform(np.log(.01), np.log(100)))/np.linalg.norm(p0)
-        with np.errstate(all='ignore'): rr = minimize(f, p0, method='L-BFGS-B', options={'maxiter': 2000})
-        if np.isfinite(rr.fun): mins.append((rr.fun, np.linalg.norm(rr.x)))
-    mins = np.array(mins); other = mins[np.abs(mins[:, 0] - vew) > 1e-6*abs(vew)]
-    deepest = other[:, 0].min() if len(other) else np.nan
-    return dict(V_EW=vew, deepest_other=float(deepest), gap=float(deepest - vew) if len(other) else np.nan, global_ok=bool(mins[:, 0].min() >= vew - 1e-6*abs(vew)), n_starts=n)
+    """Deep global-minimum search (vac.global_search: analytic gradients, deterministic charge-breaking starts,
+    fail closed). The claim is 'no deeper minimum found by this search', not a certificate."""
+    r = vac.global_search(c, sc, nstart=n, rng=np.random.default_rng(seed))
+    return dict(V_EW=r['V_EW'], deepest=r['deepest'], gap=r['deepest'] - r['V_EW'], status=r['status'], global_ok=r['status'] == 'ok',
+                n_starts=r['n'], n_converged=r['n_conv'], n_failed=r['n_fail'], ew_gradient=r['ew_grad'])
 def analyse(x, eta):
     x = np.asarray(x, float); eta = np.asarray(eta, float); sc, c = coup(x, eta); r = -sc['tb']
     mlight = min(sc['m1'], sc['mA'], sc['mH']); t0 = np.log(mlight); res = {}

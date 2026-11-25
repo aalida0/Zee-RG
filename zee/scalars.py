@@ -16,7 +16,10 @@ def charged_mass_matrix(MHp2, M332, mu, v=V_EW):
 
 
 def charged_spectrum(MHp2, M332, mu, v=V_EW):
-    """Return (m1^2, m2^2, phi) for h1+ = c H+ - s h+, h2+ = s H+ + c h+ (off-diagonal +mu v/sqrt2).
+    """Return (m1^2, m2^2, phi) for the code convention: off-diagonal -mu v/sqrt2 (charged_mass_matrix, and
+    H1^T eps H2 in vac.vfull), light state h1+ = c H+ + s h+, heavy h2+ = -s H+ + c h+ (tests/test_zee.py).
+    Equivalent to HG's +mu v/sqrt2 with h1+ = c H+ - s h+ after rephasing h+ -> -h+ (which also flips f and mu);
+    the manuscript states the code convention.
 
     m1 <= m2. phi lies in [0, pi/2] for mu >= 0, so h1+ is mostly the singlet
     for phi > pi/4. Closed form of eq. (2.9); s2phi of eq. (2.8) follows from it.

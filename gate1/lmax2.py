@@ -8,25 +8,39 @@ from zee import rgfast2, bfb2, vac
 import m_filter_l4w as M
 from m_filter_l4w import H
 SC = np.log(10.0**np.arange(3, 16.01, 1.0)); CM = 4*np.pi
-def lam_valid(c, t0, r):
-    """log10 of the largest scale (<=1e16) up to which couplings stay < 4 pi and the quartic form stays bounded from below.
-    Failed candidates return log10(last good scale) + 5*min(0, min V_red) so the local search sees a gradient."""
+def _bfb(c):
+    """scan-level BFB margin: coarse grid, refined on the fine grid only when the coarse margin is small"""
+    v = bfb2.min_vred(c, refine=0, coarse=True)
+    return v if v > 0.02 else bfb2.min_vred(c, refine=2)
+def lam_valid(c, t0, r, status=False):
+    """Search score: log10 of the largest scale (<=1e16) up to which couplings stay < 4 pi, unitarity holds and the quartic
+    form stays bounded from below, on the grid SC. Failed candidates return log10(last good scale) minus a penalty so the
+    local search sees a gradient. Fails closed: an integration that stops without a perturbativity event, returns nothing
+    or produces non-finite couplings scores the last good scale (never the endpoint); status=True also returns the reason.
+    This is a discovery heuristic; benchmark claims use gate2/bench.trajectory (fine grid, bracketing, endpoint check)."""
+    def ret(v, why): return (v, why) if status else v
+    if not np.all(np.isfinite(c)): return ret(-99.0, 'nonfinite')
+    um = vac.unit_max(c)
+    if um > 8*np.pi: return ret(np.log10(np.exp(t0)) - 1.0 - (um - 8*np.pi)/8, 'unitarity@start')
     v0 = bfb2.min_vred(c, refine=2)
-    if vac.unit_max(c) > 8*np.pi: return np.log10(np.exp(t0)) - 1.0 - (vac.unit_max(c) - 8*np.pi)/8
-    if v0 < -1e-9: return np.log10(np.exp(t0)) + 5*v0 - 1.0
-    ts = SC[SC > t0]
-    s = rgfast2.run(c, t0, t1=np.log(1e16), cmax=CM, scales=ts if len(ts) else None, r=r)
-    lim = s.t_events[0][0] if len(s.t_events[0]) else np.log(1e16)
-    best = t0
-    Y = np.asarray(s.y)
-    if Y.size == 0: return np.log10(np.exp(lim))
-    for t, zz in zip(s.t, Y.T):
-        if t > lim: break
-        v = bfb2.min_vred(zz[4:], refine=0)
-        if vac.unit_max(zz[4:]) > 8*np.pi: return np.log10(np.exp(best)) - 0.25
-        if v < -1e-9: return np.log10(np.exp(best)) + 5*min(v, 0) - 0.5
+    if v0 < 0: return ret(np.log10(np.exp(t0)) + max(5*v0, -3.0) - 1.0, 'BFB@start')
+    t1 = np.log(1e16); ts = SC[SC > t0]
+    s = rgfast2.run(c, t0, t1=t1, cmax=CM, scales=ts if len(ts) else None, r=r)
+    ev = s.t_events[0] if s.t_events is not None else []
+    if s.status == -1: lim, why = None, 'integration'
+    elif len(ev): lim, why = ev[0], 'perturbativity'
+    elif s.status == 0: lim, why = t1, 'none'
+    else: lim, why = None, 'integration'
+    best = t0; Y = np.asarray(s.y)
+    for t, zz in zip(s.t, Y.T if Y.size else []):
+        if lim is not None and t > lim: break
+        if not np.all(np.isfinite(zz)): return ret(np.log10(np.exp(best)) - 0.5, 'nonfinite')
+        if vac.unit_max(zz[4:]) > 8*np.pi: return ret(np.log10(np.exp(best)) - 0.25, 'unitarity')
+        v = _bfb(zz[4:])
+        if v < 0: return ret(np.log10(np.exp(best)) + max(5*min(v, 0), -3.0) - 0.5, 'BFB')
         best = t
-    return np.log10(np.exp(lim))
+    if lim is None: return ret(np.log10(np.exp(best)) - 0.5, why)      # solver failure: last checked scale, penalised
+    return ret(np.log10(np.exp(lim)), why)
 def job(a):
     i, x = a; n0, nit = NN
     rng = np.random.default_rng(5000 + i)
@@ -35,9 +49,8 @@ def job(a):
     def build(eta):
         c = np.zeros(11); c[0], c[2], c[3], c[4], c[5] = sc['lam1'], sc['lam3'], sc['lam4'], sc['lam5'], sc['lam6']
         c[1], c[6], c[7], c[8], c[9], c[10] = eta; return c
-    def ok(c):
-        d = ((mu_gg*M.rgg_gen(sc, c[6], c[7], c[9])/rgg0 - 1.14)/0.185)**2 - g0
-        return e['chi2'] + d <= M.LIM
+    def ok(c):   # the full statistic with this choice of free quartics (same as gate2/accept.py)
+        return H.evaluate(x, 'NO', eta=[c[1], c[6], c[7], c[8], c[9], c[10]])['chi2'] <= M.LIM
     lo = np.array([0.02, -1.5, -1.5, -1.5, -1.5, 0.0]); hi = np.array([3.5449, 1.5, 1.5, 1.5, 1.5, 3.0])
     draw = lambda: np.array([np.exp(rng.uniform(np.log(.02), np.log(3.5449))), rng.uniform(-1.5, 1.5), *(rng.uniform(-1.5, 1.5, 3) * (rng.random(3) < .6)), rng.uniform(0, 3)])
     pool = []

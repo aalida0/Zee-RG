@@ -11,7 +11,7 @@ from memory, not HG's refs [105-108]); HFLAV universality treated as uncorrelate
 import numpy as np
 
 from . import V_EW as V
-from . import neutrino as N, scalars as S, observables as O, stu as T, bz as B
+from . import neutrino as N, scalars as S, observables as O, stu as T, bz as B, dipfull as DF
 from .observables import M_LEP, GF, ALPHA, BR_TAU_LNUNU
 
 MH = 125.5
@@ -108,7 +108,24 @@ def lepton_couplings(Y, sc):
     return {"h": sba * mv + cba * Dd / np.sqrt(2), "H": cba * mv - sba * Dd / np.sqrt(2), "A": 1j * Dd / np.sqrt(2)}, Dd
 
 
+def charged_lepton_widths(f, Dd, sc):
+    """Gamma(h_k+ -> l_j nu) summed over neutrinos, k = 1, 2 (rows), j = e, mu, tau (columns).
+    -L = nubar U^dag Dd e_R (c h1+ - s h2+) + nu^T C (2f) e_L (s h1+ + c h2+)  (HG 3.26-3.27; hep-ph/0604012):
+    the width into l_j is the column-j norm of Dd (doublet part) and of 2f (singlet part)."""
+    c, s = np.cos(sc["phi"]), np.sin(sc["phi"]); y = 2 * f
+    nD = np.sum(abs(Dd) ** 2, axis=0); nf = np.sum(abs(y) ** 2, axis=0)
+    return np.array([sc["m1"] / (16 * np.pi) * (c * c * nD + s * s * nf), sc["m2"] / (16 * np.pi) * (s * s * nD + c * c * nf)])
+
+
+def universality(f, sc):
+    """amplitude ratios A(tau->e)/A(mu->e), A(tau->mu)/A(mu->e), A(tau->mu)/A(tau->e) and the G_F shift from h1+, h2+ exchange"""
+    eps = np.sqrt(2) / GF * (np.sin(sc["phi"]) ** 2 / sc["m1"] ** 2 + np.cos(sc["phi"]) ** 2 / sc["m2"] ** 2)
+    gme, gte, gtm = (np.sqrt(1 + eps * abs(f[a, b]) ** 2) for a, b in ((0, 1), (0, 2), (1, 2)))
+    return {"tm": gte / gme, "te": gtm / gme, "me": gtm / gte}, gme - 1
+
+
 def dipoles(i, j, Lam, mass, bz_c):
+    """LEGACY (HG eq. 3.13-3.19 leading terms): kept only as a regression approximation; production uses zee.dipfull."""
     """(C_L, C_R) for decay j -> i, HG normalisation (|C|^2 form of eq. 3.12). One-loop neutral (tau inside) + BZ."""
     mj = M_LEP[j]
     cl = cr = 0j
@@ -171,7 +188,25 @@ def htogg(sc, mt=172.5, mw=80.379):
     return float(abs(num / den) ** 2)
 
 
-def evaluate(x, ordering="NO", with_stu=True):
+def rgg_general(sc, trilin, mt=172.5, mw=80.379):
+    """R_gamma_gamma with the charged-scalar trilinears of dipfull.charged_trilinears (HG eqs. 3.42-3.46 for l7=l8=l10=0)."""
+    mh2 = MH**2
+    def fx(x):
+        return np.arcsin(np.sqrt(x)) ** 2 if x <= 1 else -0.25 * (np.log((1 + np.sqrt(1 - 1 / x + 0j)) / (1 - np.sqrt(1 - 1 / x + 0j))) - 1j * np.pi) ** 2
+    def A12(t): return 2 * t + 2 * t * (1 - t) * fx(1 / t)
+    def A1(t): return -2 - 3 * t - 3 * t * (2 - t) * fx(1 / t)
+    def A00(t): return -t + t**2 * fx(1 / t)
+    kt = sc["sba"] - sc["tb"] * sc["cba"]
+    tW, tt = 4 * mw**2 / mh2, 4 * mt**2 / mh2
+    num = sc["sba"] * A1(tW) + (4 / 3) * kt * A12(tt)
+    for l, m in zip(trilin["h"], (sc["m1"], sc["m2"])):
+        num += l * V**2 / (2 * m**2) * A00(4 * m**2 / mh2)
+    return float(abs(num / (A1(tW) + (4 / 3) * A12(tt))) ** 2)
+
+
+def evaluate(x, ordering="NO", with_stu=True, eta=None):
+    """eta = (l2, l7, l8, l9, l10, lh): free quartics entering R_gamma_gamma and the charged-scalar Barr-Zee loops
+    (None = HG slice, l7 = l8 = l10 = 0). The same chi2 is used for search, acceptance and reporting."""
     sc = scalar_sector(x)
     f, Y = unpack(x)
     tb = sc["tb"]
@@ -190,22 +225,16 @@ def evaluate(x, ordering="NO", with_stu=True):
                     (o["s23sq"] - t["s23"][0]) / t["s23"][1], (o["dm21_eV2"] - t["dm21"][0]) / t["dm21"][1],
                     (o["dm3l_eV2"] - t["dm3"][0]) / t["dm3"][1], dd / t["d"][1]])
     ob = {}
-    bzc = bz_matrix(Lam, mass, sc)
+    l7, l8, l10 = (0.0, 0.0, 0.0) if eta is None else (eta[1], eta[2], eta[4])
+    trilin = DF.charged_trilinears(sc, l7, l8, l10)
+    AL, AR = DF.amplitudes(Lam, mass, f, Dd, sc, trilin)
     for name, (i, j) in {"mu_e_g": (0, 1), "tau_e_g": (0, 2), "tau_mu_g": (1, 2)}.items():
-        cl, cr = dipoles(i, j, Lam, mass, bzc)
-        clc, crc = charged_c(i, j, f, Dd, sc)
-        cl += clc; cr += crc
         norm = 1.0 if name == "mu_e_g" else BR_TAU_LNUNU[i]
-        ob[name] = norm * 48 * np.pi**3 * ALPHA / GF**2 * (abs(cl) ** 2 + abs(cr) ** 2)
-    # diagonal moments (C_L = C_R^*): a = 2 m^2 Re C_R, d/e = m Im C_R, from c = e m C/2 and L = (e a/4m) lbar sigma l F;
-    # HG (3.21), (3.23) are a factor 2 larger (convention of the h.c. for i=j); physical normalisation used here
+        ob[name] = norm * 48 * np.pi**3 * ALPHA / GF**2 * (abs(AL[i, j]) ** 2 + abs(AR[i, j]) ** 2)
+    ALs, ARs = DF.sm_reference(sc)
+    amom, dmom = DF.diagonal_moments(AL - ALs, AR - ARs)   # new physics only
     for nm, i in (("e", 0), ("mu", 1)):
-        cl, cr = dipoles(i, i, Lam, mass, bzc)
-        cl = np.conj(cr)
-        clc, crc = charged_c(i, i, f, Dd, sc)
-        crt = cr + crc
-        ob["da_" + nm] = abs(2 * M_LEP[i] ** 2 * crt.real); ob["das_" + nm] = 2 * M_LEP[i] ** 2 * crt.real
-        ob["d_" + nm] = abs(M_LEP[i] * crt.imag) * 1.973e-14  # GeV^-1 -> cm
+        ob["da_" + nm] = abs(amom[i]); ob["das_" + nm] = amom[i]; ob["d_" + nm] = abs(dmom[i])
     # trilepton (3.9)
     cb = 1 / np.sqrt(1 + tb**2)
     g1 = {"h": sc["sba"] - tb * sc["cba"], "H": sc["cba"] + tb * sc["sba"], "A": -1j * tb}
@@ -230,7 +259,7 @@ def evaluate(x, ordering="NO", with_stu=True):
             for a in range(2):
                 for b in range(2): C[a, b] += vI[a] * vj[b] / m2
         return (1 / (32 * GF**2)) * (xi * abs(C[0, 0]) ** 2 + xi * abs(C[1, 1]) ** 2 + abs(C[0, 1]) ** 2 + abs(C[1, 0]) ** 2) * KAPPA3
-    ob["tau_3mu_gen"] = BR_TAU_LNUNU[1] * l3(2, 1, 0.5); ob["tau_3mu"] = ob["tau_3mu_gen"]; ob["mu_3e_tree"] = l3(1, 0, 0.5)
+    ob["tau_3mu_hg"] = ob["tau_3mu"]; ob["tau_3mu_gen"] = BR_TAU_LNUNU[1] * l3(2, 1, 0.5); ob["tau_3mu"] = ob["tau_3mu_gen"]; ob["mu_3e_tree"] = l3(1, 0, 0.5)
     # mu-e conversion (3.24)-(3.25)
     gLV = gRV = 0
     for p in ("h", "H", "A"):
@@ -274,9 +303,9 @@ def evaluate(x, ordering="NO", with_stu=True):
     chi_b["nat_e"] = max(0.0, (nat2 / (ME_ * MTAU)) ** 2 - 1)
     muB = KAPPA * 4 * np.pi * MH / sc["sba"]
     chi_b["nat_mu_trilinear"] = max(0.0, (sc["mu"] / muB) ** 2 - 1)
-    eps = np.sqrt(2) / (GF * (np.sin(sc["phi"]) ** 2 / sc["m1"] ** 2 + np.cos(sc["phi"]) ** 2 / sc["m2"] ** 2))
-    uni = {"tm": np.sqrt(1 + eps * abs(f[0, 2]) ** 2), "te": np.sqrt(1 + eps * abs(f[1, 2]) ** 2),
-           "me": np.sqrt(abs(1 + eps * (abs(f[1, 2]) ** 2 - abs(f[0, 2]) ** 2)))}
+    # tree-level h1+, h2+ exchange in l_I -> l_J nu nu (HG eqs. 3.28-3.33; Crivellin et al. 2012.09845 eq. 2):
+    # |A/A_SM|^2 = 1 + eps |f_IJ|^2, eps = sqrt2/(G_F Mt2^2), 1/Mt2^2 = s^2/m1^2 + c^2/m2^2
+    uni, ob["delta_mu_e"] = universality(f, sc)   # delta_mu_e: G_F shift from muon decay (CKM unitarity), off-slice only
     chi_am = ((ob["das_mu"] - 3.8e-10) / 6.3e-10) ** 2 if "amu" in ING else 0.0   # a_mu^exp - a_mu^SM(WP25)
     chi_b["amu"] = chi_am
     chi_u = sum(((uni[k] - UNIV[k][0]) / UNIV[k][1]) ** 2 for k in uni)
@@ -287,7 +316,7 @@ def evaluate(x, ordering="NO", with_stu=True):
         chi_stu = float(d @ np.linalg.solve(STU_COV, d))
     # Higgs signals (approximate)
     kV = sc["sba"]; kt = sc["sba"] - tb * sc["cba"]; ktau = Lam["h"][2, 2].real * V / MTAU
-    rgg = htogg(sc)
+    rgg = rgg_general(sc, trilin)
     gam = (BR_SM["bb"] * kt**2 + BR_SM["WW"] * kV**2 + BR_SM["gg"] * kt**2 + BR_SM["tt"] * ktau**2 + BR_SM["cc"] * kt**2
            + BR_SM["ZZ"] * kV**2 + BR_SM["gg_"] * rgg + BR_SM["Zg"] * 1.0)
     prod = 0.87 * kt**2 + 0.13 * kV**2
@@ -306,7 +335,7 @@ def evaluate(x, ordering="NO", with_stu=True):
     if with_stu:
         res.extend(np.linalg.solve(np.linalg.cholesky(STU_COV), np.array(stu_v) - STU_C))
     res.extend([(mus[k] - HIGGS[k][0]) / HIGGS[k][1] for k in mus])
-    res.append(30.0 * np.sqrt(sc["pen"]))
+    res.append(np.sqrt(1e3 * sc["pen"]))   # same weight as in chi2
     total = chi_osc + sum(chi_b.values()) + chi_u + chi_stu + chi_h + 1e3 * sc["pen"]
     return dict(chi2=total, chi_osc=chi_osc, chi_bounds=chi_b, chi_univ=chi_u, chi_stu=chi_stu, chi_higgs=chi_h,
                 pen=sc["pen"], res=np.array(res, float), obs=ob, sc=sc, osc=osc, stu=stu_v, mus=mus, rgg=rgg)

@@ -3,14 +3,17 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from zee import hgmodel as H, vac
 
 def test_generic_trilepton_matches_hg_on_slice():
-    rng = np.random.default_rng(1)
-    for _ in range(20):
+    rng = np.random.default_rng(1); n = 0
+    for _ in range(40):
         x = H.LO + rng.random(18) * (H.HI - H.LO); x[:11] = rng.choice([-1, 1], 11) * 10**rng.uniform(-6, -2, 11)
         try: e = H.evaluate(list(x), 'NO')
         except Exception: continue
         f, Y = H.unpack(x); sc = e['sc']
-        assert np.isclose(e['obs']['tau_3mu'], e['obs']['tau_3mu_gen'], rtol=1e-10)
+        if not np.isfinite(e['chi2']): continue
+        n += 1
+        assert e['obs']['tau_3mu_hg'] > 0 and abs(e['obs']['tau_3mu_gen']/e['obs']['tau_3mu_hg'] - 1) < 1e-8   # HG (3.9) vs generic
         assert e['obs']['mu_3e_tree'] == 0.0 or e['obs']['mu_3e_tree'] < 1e-40
+    assert n >= 10
 
 def test_unitarity_2hdm():
     c = np.zeros(11); c[:5] = [1.0, 0.5, 0.3, 0.2, 0.1]; l1, l2, l3, l4, l5 = c[:5]

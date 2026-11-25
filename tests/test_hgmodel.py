@@ -8,13 +8,15 @@ X = np.load(os.path.join(os.path.dirname(__file__), "data", "best_NO.npy"))
 
 
 def test_regression_best_point():
-    # HG-input fit point: chi2 and two LFV observables frozen (catches silent changes of the model)
+    """Change detector, NOT a validation: values after the referee-v5 repair (C01 universality, C02/C03 complete dipoles).
+    Previous values (3.1044, 2.5532e-13, 2.1897e-8) came from the inverted universality term and leading dipoles.
+    The physics is validated in test_dipfull.py and test_couplings.py; update these numbers only with a documented reason."""
     if H.MODERN:
         pytest.skip("regression values are for the HG input set")
     e = H.evaluate(X, "NO")
-    assert np.isclose(e["chi2"], 3.1044, atol=1e-3)
-    assert np.isclose(e["obs"]["mu_e_g"], 2.5532e-13, rtol=1e-3)
-    assert np.isclose(e["obs"]["tau_mu_g"], 2.1897e-8, rtol=1e-3)
+    assert abs(e["chi2"] / 12.17126 - 1) < 1e-5
+    assert abs(e["obs"]["mu_e_g"] / 2.55549e-13 - 1) < 1e-5
+    assert abs(e["obs"]["tau_mu_g"] / 2.35736e-8 - 1) < 1e-5
 
 
 def test_lambda4_zero_is_hg_slice():
@@ -36,11 +38,11 @@ def test_alignment_limit_mass_relations():
     assert np.isclose(s["mH"] ** 2 - s["mA"] ** 2, x[16] * H.V**2, rtol=1e-6)   # M22 = mA^2 + lambda5 v^2
 
 
-def test_dipole_conversion_term():
-    if not H.MODERN:
-        pytest.skip("Cr_Al only meaningful with ZEE_INPUTS=modern (term itself is input independent)")
+def test_conversion_component_normalization():
+    """Cr(Al) = 0.51 x monopole(Au, HG 3.24) + 2.67e-3 Br(mu->e gamma) + scalar term; relative tolerance only"""
     o = H.evaluate(X, "NO")["obs"]
-    assert np.isclose(o["Cr_Al"] - o["Cr_Au"], H.ALPHA / 3 * o["mu_e_g"], rtol=1e-9)
+    ref = 0.51 * o["Cr_Au_HG"] + 2.67e-3 * o["mu_e_g"] + o["Cr_Al_S"]
+    assert ref > 0 and abs(o["Cr_Al"] / ref - 1) < 1e-12
 
 
 def test_mu3e_dipole_estimate_ratio():

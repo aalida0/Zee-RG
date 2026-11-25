@@ -12,7 +12,7 @@ from m_filter_l4w import H
 obs, logL, seed, wall, out = sys.argv[1], float(sys.argv[2]), int(sys.argv[3]), float(sys.argv[4]), sys.argv[5]
 rng = np.random.default_rng(777 + 1000 * seed)
 d = pickle.load(open(D + '/mfilt4w_NO.pkl', 'rb')); S = d['S']; lm = {t[0]: t for t in pickle.load(open(D + '/lmax_final2.pkl', 'rb'))}
-best = pickle.load(open(D + '/mbest_NO.pkl', 'rb'))[0][0]; M.LIM = best + 3.84
+best = pickle.load(open(os.path.join(R, 'results', 'refit_corrected.pkl'), 'rb'))['NO'][0]; M.LIM = best + 3.84
 HSMIN = min(t[3] for t in lm.values()); S0 = 1e-6
 lo = np.append(H.LO, -np.sqrt(4*np.pi)); hi = np.append(H.HI, np.sqrt(4*np.pi)); ZM = np.arcsinh(0.1/S0); lo[:11] = -ZM; hi[:11] = ZM
 span = hi - lo; span[:11] = 3.0
@@ -25,7 +25,7 @@ def lam_test(x, target, n0=60, nit=120):
     def build(eta):
         c = np.zeros(11); c[0], c[2], c[3], c[4], c[5] = sc['lam1'], sc['lam3'], sc['lam4'], sc['lam5'], sc['lam6']
         c[1], c[6], c[7], c[8], c[9], c[10] = eta; return c
-    ok = lambda c: e['chi2'] + ((mu_gg*M.rgg_gen(sc, c[6], c[7], c[9])/rgg0 - 1.14)/0.185)**2 - g0 <= M.LIM
+    ok = lambda c: H.evaluate(list(x), 'NO', eta=[c[1], c[6], c[7], c[8], c[9], c[10]])['chi2'] <= M.LIM   # same statistic as gate2/accept.py
     elo = np.array([0.02, -1.5, -1.5, -1.5, -1.5, 0.0]); ehi = np.array([3.5449, 1.5, 1.5, 1.5, 1.5, 3.0])
     draw = lambda: np.array([np.exp(rng.uniform(np.log(.02), np.log(3.5449))), rng.uniform(-1.5, 1.5), *(rng.uniform(-1.5, 1.5, 3)*(rng.random(3) < .6)), rng.uniform(0, 3)])
     pool = []
