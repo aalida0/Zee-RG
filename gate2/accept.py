@@ -16,7 +16,8 @@ sys.path.insert(0, _R); sys.path.insert(0, _R + '/gate1'); sys.path.insert(0, _R
 from zee import hgmodel as H, vac, flavour as FL, chargedbr as CB, dy as DY, dipfull as DF
 import lmax2 as L
 
-DCHI2 = 3.84; HSMIN = 151.65; H_TAU_MU, H_TAU_E = 0.0018, 0.0020
+DCHI2 = 3.84; HSREF = 153.72; H_TAU_MU, H_TAU_E = 0.0018, 0.0020
+# HiggsSignals reference: the SM-like value of the same dataset and tool (153.72 for 159 observables at 125.5 GeV); a point passes if it is not worse than the SM-like value by more than 3.84
 SQ4PI = np.sqrt(4*np.pi)
 FMAX = 0.1                                   # |f|, |Y2| components (declared domain of the paper)
 ETA_MAX = 3.0                                # |free quartics|
@@ -83,7 +84,7 @@ def accept(x, eta, cmin, logL=None, collider=True, n_vac=80, seed=11, stop_early
             unresolved.append('collider module unavailable: %s' % type(ex).__name__); hcoll = None
         if hcoll is not None:
             col, _ = hcoll.run(x, eta); rec['collider'] = col
-            cuts.update(HB=bool(col['HB_allowed']), HS=bool(col['HS_chi2'] - HSMIN <= DCHI2),
+            cuts.update(HB=bool(col['HB_allowed']), HS=bool(col['HS_chi2'] - HSREF <= DCHI2),
                         h_tau_mu=bool(col['BR_h_tau_mu'] <= H_TAU_MU), h_tau_e=bool(col['BR_h_tau_e'] <= H_TAU_E))
     else:
         unresolved.append('collider tests not run (HB/HS/Higgs LFV)')

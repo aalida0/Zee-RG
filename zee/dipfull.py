@@ -90,6 +90,7 @@ def _panels():
     return xs, ws
 _XG, _WG = _panels()
 HW_ON = True
+HW_SET_SIGN = {4: 1.0, 5: 1.0, 6: 1.0}   # per-set sign/scale of S(4), S(5), S(6): robustness bracketing only
 HW_SCALE = 1.0   # robustness variants of the H+-W-+ gamma set: 0 (off), 1 (default), -1 (opposite overall sign)
 NC, QT, QB = 3, 2.0 / 3, -1.0 / 3
 MT, MB = 172.5, 4.18
@@ -109,8 +110,12 @@ def bz_HW(Dd, mass, sc, trilin):
     (outer) and, for the contact-type loop, over the internal mass eigenstate j. The lepton vertex is conj(Dd[I,J]) (the neutrino
     carries the flavour of the final lepton J, so that the SM W vertex is flavour diagonal; the singlet coupling 2f is neglected, f ~ 1e-6).
     Checks (tests): diagonal limit against an independent quadrature of Ilisie's typeset formulae, charged-mass-basis independence
-    for degenerate states, decoupling.  NOT checked against an independent two-loop calculation: the overall sign and size rest on
-    the transcription, so the production gate varies HW_SCALE in {0, 1, -1}.  The definition of G1 is inferred as G(1, .)."""
+    for degenerate states, decoupling, and the paper's own benchmark for set (4) (M_H+ = 90 GeV, varsigma_u varsigma_l = -50 gives
+    ~33% of Delta a_mu = 262e-11, the paper quotes ~35%; the sign is positive for negative varsigma_u varsigma_l as stated there).
+    NOT checked against an independent two-loop calculation, and the equations were compared with a machine-extracted text of the
+    paper, so the production gate still varies HW_SCALE in {0, 1, -1}.  G1(w) = G(1, w) follows from the common structure
+    [F(M_H+) - F(M_W)] of Eqs. (22)-(24).  At the benchmarks tau->mu gamma is controlled by set (4) alone (sets (5), (6) change it
+    by < 5%); HW_SET_SIGN allows flipping each set separately for this bracketing."""
     if "raw_h" not in trilin:
         return np.zeros((3, 3), complex), np.zeros((3, 3), complex)
     c, s = np.cos(sc["phi"]), np.sin(sc["phi"])
@@ -147,6 +152,7 @@ def bz_HW(Dd, mass, sc, trilin):
             P[r:r + 2] = x**2 * ((mH2 + MW**2 - mass[ph] ** 2) * (1 - x) - 4 * MW**2); r += 2
             for j in range(2):
                 P[r:r + 2] = poly6; r += 2
+    cf = cf * np.array([HW_SET_SIGN[int(k_)] for k_ in kind])
     coef = float(np.sum(cf * (Gm * P * w[None, :]).sum(1)))
     AL = pref * coef * Dd.conj().T / M[None, :]                  # A_L[J, I] = pref coef conj(Dd[I, J]) / m_I
     AR = pref * coef * Dd / M[None, :]                           # hermiticity: X_R[J, I] = conj(X_L[I, J]), X = m_I A

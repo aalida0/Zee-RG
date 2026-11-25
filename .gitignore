@@ -1,3 +1,4 @@
 __pycache__/
 *.pyc
 zee/_nufit_cache/
+results/bench_cache/

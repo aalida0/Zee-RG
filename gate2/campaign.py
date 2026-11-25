@@ -5,7 +5,7 @@ proposals are rejected after one 30 ms model evaluation:
   3 H+-W-gamma variants (0, -1)                          (2 more evaluations)
   4 HiggsBounds / HiggsSignals / h -> tau mu             (only if the Higgs module is importable; otherwise points are marked
                                                           collider='not run' and are UNRESOLVED until re-checked locally)
-  5 RG reach Lf >= LOGL for the chain's own quartics     (lam_valid)
+  5 RG reach >= LOGL for the chain's own quartics and for quartics x1.1, x0.9 (lam_valid, coarse)
 The vacuum test (80 starts) and the full record are done only for the points that are STORED.
 Modes:  sample   Metropolis random walk, symmetric Gaussian proposals, proposals outside the parameter box are REJECTED (no clipping).
                  Stationary measure: uniform in the sampling coordinates z (Yukawas in arcsinh(x/1e-6), the other 14 parameters linear)
@@ -62,12 +62,17 @@ def stage_gate(x, eta, logL, t=None):
         finally: DF.HW_SCALE = 1.0
     if HAVE_HIGGS:
         col, _ = hcoll.run(x, eta); info['col'] = col
-        if not (col['HB_allowed'] and col['HS_chi2'] - AC.HSMIN <= AC.DCHI2 and col['BR_h_tau_mu'] <= AC.H_TAU_MU and col['BR_h_tau_e'] <= AC.H_TAU_E):
+        if not (col['HB_allowed'] and col['HS_chi2'] - AC.HSREF <= AC.DCHI2 and col['BR_h_tau_mu'] <= AC.H_TAU_MU and col['BR_h_tau_e'] <= AC.H_TAU_E):
             return False, info, 'higgs'
     c = AC.quartics(sc, eta); t0 = np.log(min(sc['m1'], sc['mA'], sc['mH']))
     Lf, why = L.lam_valid(c, t0, -sc['tb'], status=True); info['Lf'] = float(Lf); info['Lf_status'] = why
     if why in ('nonfinite', 'unitarity@start', 'BFB@start'): return False, info, 'rg_start'
     if Lf < logL: return False, info, 'cutoff'
+    # prefilter against the certification variants that move the reach most: boundary quartics x1.1 and x0.9 (coarse grid, ~0.05 s each)
+    for kq in (1.1, 0.9):
+        Lk, whyk = L.lam_valid(c * kq, t0, -sc['tb'], status=True)
+        info['Lf_q%.1f' % kq] = float(Lk)
+        if whyk in ('nonfinite', 'unitarity@start', 'BFB@start') or Lk < logL: return False, info, 'cutoff'
     return True, info, 'ok'
 
 

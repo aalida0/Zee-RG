@@ -193,3 +193,14 @@ def test_divided_difference_continuous_at_degeneracy():
         for f in (LP.FHt, LP.FAt):
             a, b, c = f(x, x*(1 + 1e-3)), f(x, x), f(x, x*(1 - 1e-3))
             assert np.isfinite(b) and abs(b/a - 1) < 2e-3 and abs(b/c - 1) < 2e-3
+
+
+def test_hw_set4_reproduces_ilisie_amu_benchmark():
+    """Ilisie quotes ~35% of Delta a_mu = 262e-11 from set (4) at M_H+ = 90 GeV for large negative varsigma_u varsigma_l (|varsigma_l| <= 50,
+    |varsigma_u| < 1): the normalisation and sign of the transcription must reproduce that."""
+    MH = 90.0; dm = MH**2 - DF.MW**2
+    I = _quad(lambda x: (DF.QT*x + DF.QB*(1 - x))*(DF.MB**2*x*(1 - x) + DF.MT**2*x*(1 + x))
+              *(_G_ref(DF.MT**2/MH**2, DF.MB**2/MH**2, x) - _G_ref(DF.MT**2/DF.MW**2, DF.MB**2/DF.MW**2, x)))
+    a4 = DF.ALPHA*DF.M[1]**2*3/(32*np.pi**3*DF.SW2*DF.V**2*dm)*I
+    frac = -50*a4/262e-11
+    assert 0.25 < frac < 0.45
