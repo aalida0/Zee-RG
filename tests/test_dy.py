@@ -30,7 +30,10 @@ def test_tau_window():
 def test_old_benchmarks_fail():
     assert st(136.9, 1.4e-7, .988, .0116, d=0.0215) == 'FAIL' and st(146.6, 1.8e-7, .9868, .0132, d=0.01) == 'FAIL'
 
-def test_unresolved_for_large_doublet_fraction():
-    assert st(300, 0.0, .5, .5, d=0.5) == 'UNRESOLVED'
+def test_chord_upper_bound_and_decide():
+    # the interpolation never exceeds the larger end point (convexity), also for large doublet fractions
+    for m in (150., 300., 450.):
+        for d in (0.2, 0.5, 0.8): assert dy.sigma_dy(m, d) <= max(dy.sigma_dy(m, 0.), dy.sigma_dy(m, 1.)) + 1e-12
     r = dy.decide([136.9, 758.], [.02, .98], [0, 0], [.988, .001], [.01, .01]); assert r['status'] == 'FAIL'
     r = dy.decide([600., 758.], [.02, .98], [0, 0], [.9, .001], [.1, .01]); assert r['status'] == 'PASS'
+    assert st(300, 0.0, .5, .5, d=0.5) == 'FAIL'

@@ -15,8 +15,9 @@ used in the construction, see the test; the 0.85 for electrons reproduces the 42
 100 <= m <= 350 GeV when B_tau^2 > 1/2 (published: allowed at B_tau = 1/2, excluded at B_tau = 1).
 Approximations (documented, not a full recast): the limit is a function of the same-flavour weight only (e mu and ll-tau
 channels neglected); the e-mu-tau interpolation between the published benchmarks is not a measurement; each charged state is
-screened separately; the doublet fraction d enters through sigma = (1-d) sigma_R + d sigma_L, which neglects gamma-Z
-interference, so the screen is UNRESOLVED when m < 500 GeV and d > 0.3.  Masses above 500 GeV (end of the cross-section table) are screened as passing (sigma_L(500) = 0.47 fb).
+screened separately; the doublet fraction d enters through sigma = (1-d) sigma_R + d sigma_L.  The exact LO cross section is quadratic and
+convex in the Z coupling, which is linear in d, so the chord overestimates sigma between the end points: the interpolation is an
+upper bound (conservative), not an approximation that can under-exclude.  Masses above 500 GeV (end of the cross-section table) are screened as passing (sigma_L(500) = 0.47 fb).
 A pass is a statement about this screen, not an experimental certification."""
 import numpy as np
 
@@ -68,8 +69,6 @@ def screen_state(m, d, be, bmu, btau):
     """One charged mass eigenstate. Returns dict(status, w_eff, w_thr, tau, reason)."""
     if m > _M[-1]:
         return dict(status='PASS', w_eff=0.0, w_thr=None, tau=False, reason='above 500 GeV')
-    if d > 0.3:
-        return dict(status='UNRESOLVED', w_eff=None, w_thr=None, tau=False, reason='doublet fraction > 0.3: linear interpolation not trusted')
     w = (bmu**2 + KAPPA_E*be**2)*sigma_dy(m, d)/_sig_R(m); thr = w_thr(m)
     tau = (TAU_WINDOW[0] <= m <= TAU_WINDOW[1]) and (btau**2 > TAU_B2)
     bad = thr is not None and w >= thr*(1 - 1e-9)

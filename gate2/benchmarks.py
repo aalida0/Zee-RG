@@ -32,8 +32,15 @@ def piece(x, eta, p):
     if os.path.exists(fn): return pickle.load(open(fn, 'rb'))
     sc, c = bench.coup(x, eta); r = -sc['tb']; ml = min(sc['m1'], sc['mA'], sc['mH']); t0 = np.log(ml)
     if p == 'default': out = bench.trajectory(c, t0, r, G0)
-    elif p.startswith('match'):
+    elif p.startswith('match_'):
         f = float(p.split('_x')[1]); mu0 = max(172.5, ml*f); out = dict(bench.trajectory(c, np.log(mu0), r, bench.sm_run(mu0)), mu0=mu0)
+    elif p.startswith('matchH'):      # boundary at the heavy-doublet scale (x0.5, x1, x2 of the heaviest of mH, mA, m2): the light states decouple below it
+        f = float(p.split('_x')[1]); mh = max(sc['mH'], sc['mA'], sc['m2']); mu0 = max(172.5, mh*f); out = dict(bench.trajectory(c, np.log(mu0), r, bench.sm_run(mu0)), mu0=mu0)
+    elif p.startswith('qscale'):      # relative shift of all boundary quartics, a conservative proxy for one-loop threshold corrections
+        k = float(p.split('_')[1]); out = bench.trajectory(c*k, t0, r, G0)
+    elif p.startswith('sm_'):         # sensitivity to the SM inputs at m_t: y_t +-2%, g_s +-3%
+        kind, k = p.split('_')[1], float(p.split('_')[2]); g = np.array(bench.SM_MT, float); g[3 if kind == 'yt' else 2] *= k
+        out = bench.trajectory(c, t0, r, bench.sm_run(max(172.5, ml), start=tuple(g)))
     elif p == 'rtol_1e-6': out = bench.trajectory(c, t0, r, G0, rtol=1e-6)
     elif p == 'rtol_1e-10': out = bench.trajectory(c, t0, r, G0, rtol=1e-10)
     elif p == 'grid_300': out = bench.trajectory(c, t0, r, G0, n_per_dec=300)
@@ -41,7 +48,9 @@ def piece(x, eta, p):
     pickle.dump(out, open(fn, 'wb')); return out
 
 
-PIECES = ['default', 'match_x0.5', 'match_x1', 'match_x2', 'rtol_1e-6', 'rtol_1e-10', 'grid_300', 'vacuum']
+PIECES = ['default', 'match_x0.5', 'match_x1', 'match_x2', 'matchH_x0.5', 'matchH_x1', 'matchH_x2', 'qscale_1.1', 'qscale_0.9', 'sm_yt_1.02', 'sm_yt_0.98', 'sm_gs_1.03', 'sm_gs_0.97',
+          'rtol_1e-6', 'rtol_1e-10', 'grid_300', 'vacuum']
+TRAJ = [p for p in PIECES if p != 'vacuum']
 
 
 def record(name, x, eta, cmin):
@@ -56,7 +65,10 @@ def record(name, x, eta, cmin):
               m_beta_eV=a['obs']['m_beta'], s12sq=osc['s12sq'], s13sq=osc['s13sq'], s23sq=osc['s23sq'], delta_deg=osc['delta_deg'] % 360)
     rob = {p: piece(x, eta, p) for p in PIECES}
     _, c = bench.coup(x, eta)
-    return dict(x=x, eta=eta, accepted=a['accepted'], cuts=a['cuts'], chi2=a['chi2'], chi2_min=cmin, chi2_parts=a['chi2_parts'],
+    reach = min(rob[p]['log10Lambda'] for p in TRAJ); vac_ok = bool(rob['vacuum']['global_ok'])
+    final = 'PASS' if (a['status'] == 'PASS' and vac_ok) else ('FAIL' if a['status'] == 'FAIL' or not vac_ok else 'UNRESOLVED')
+    return dict(x=x, eta=eta, accepted=(final == 'PASS'), status=final, certified_log10_scale=float(reach), scope='one-loop, tree-level-boundary scalar-consistency estimate (not a UV-completion scale)',
+                a_status=a['status'], a_unresolved=a['unresolved'], a_failed_cuts=a.get('failed_cuts'), dy=a.get('DY'), bsgamma_e4=a.get('bsgamma_e4'), cuts=a['cuts'], chi2=a['chi2'], chi2_min=cmin, chi2_parts=a['chi2_parts'],
                 Lf_scan=a['Lf'], Lf_scan_status=a['Lf_status'], vacuum_scan=a['vacuum'],
                 masses=dict(h=H.MH, H=sc['mH'], A=sc['mA'], h1p=sc['m1'], h2p=sc['m2']), tan_beta=sc['tb'], c_beta_alpha=sc['cba'],
                 phi=sc['phi'], mu_over_v=sc['mu']/H.V, quartics=dict(zip(['l1', 'l2', 'l3', 'l4', 'l5', 'l6', 'l7', 'l8', 'l9', 'l10', 'lh'], c)),
@@ -68,7 +80,7 @@ def record(name, x, eta, cmin):
 
 if __name__ == '__main__':
     inp = json.load(open(os.path.join(RES, 'benchmarks_input.json')))
-    cmin = float(pickle.load(open(os.path.join(RES, 'refit_corrected.pkl'), 'rb'))['NO'][0])
+    cmin = float(json.load(open(os.path.join(RES, 'refit_hw.json')))['best']['chi2'])     # common refit with the production statistic (gate2/refit_hw.py)
     names = [n for n in inp if len(sys.argv) == 1 or n in sys.argv[1:]]
     out = {}
     fn = os.path.join(RES, 'benchmarks.json')

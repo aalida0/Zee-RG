@@ -58,13 +58,17 @@ def _build():
     with warnings.catch_warnings(), np.errstate(all="ignore"):
         warnings.simplefilter("ignore")
         T = np.array([[fn(v) for v in z] for fn in (FH_exact, FA_exact, G_exact, F2_exact)])
-    np.savez(_CACHE, lz=_LZ, T=T)
+    np.savez(_CACHE, lz=_LZ, T=T, src=_SRC)
     return T
+
+
+import hashlib, inspect
+_SRC = hashlib.sha256("".join(inspect.getsource(f) for f in (_lr, _h, _quad, FH_exact, FA_exact, G_exact, F2_exact)).encode()).hexdigest()[:16]
 
 
 try:
     _d = np.load(_CACHE)
-    _T = _d["T"] if np.array_equal(_d["lz"], _LZ) else _build()
+    _T = _d["T"] if (np.array_equal(_d["lz"], _LZ) and str(_d["src"]) == _SRC) else _build()   # table tied to the integrands, not only the grid
 except (OSError, KeyError):
     _T = _build()
 
@@ -80,5 +84,20 @@ FH = lambda z: _interp(0, z)
 FA = lambda z: _interp(1, z)
 G = lambda z: _interp(2, z)
 F2 = lambda w: _interp(3, w)
-FHt = lambda x, y: (x * FH(y) - y * FH(x)) / (x - y)
-FAt = lambda x, y: (x * FA(y) - y * FA(x)) / (x - y)
+def _dd(k, x, y):
+    """(x f(y) - y f(x))/(x - y) for f = table k.  The direct form amplifies the table interpolation error as 1/(x-y); for
+    |x - y| < 2e-2 x we use the Taylor form f - x f' - x f'' (y - x)/2 (f', f'' by central differences in log10 z)."""
+    x = np.asarray(x, float); y = np.asarray(y, float); f = lambda z: _interp(k, z)
+    close = np.abs(x - y) < 2e-2 * np.maximum(np.abs(x), np.abs(y))
+    z = np.where(close, x, 1.0); h = 0.05; a, b = 10**h, 10**-h
+    f0, fp, fm = f(z), f(z*a), f(z*b)
+    # derivatives w.r.t. z from the three-point stencil in u = log10 z:  f_u = (fp-fm)/(2h), f_uu = (fp-2f0+fm)/h^2
+    fu = (fp - fm)/(2*h); fuu = (fp - 2*f0 + fm)/h**2; L10 = np.log(10)
+    d1 = fu/(L10*z); d2 = (fuu - fu)/(L10**2*z**2) + 0.0*z
+    d2 = (fuu/L10**2 - fu/L10)/z**2
+    taylor = f0 - z*d1 - 0.5*z*d2*(y - x)
+    return np.where(close, taylor, (x * f(y) - y * f(x)) / np.where(close, 1.0, x - y))
+
+
+FHt = lambda x, y: _dd(0, x, y)
+FAt = lambda x, y: _dd(1, x, y)

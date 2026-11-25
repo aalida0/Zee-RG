@@ -10,12 +10,12 @@ from zee import rgfast2 as R, bfb2, vac
 from zee import hgmodel as H
 CM = 4*np.pi; LOG16 = np.log(1e16)
 SM_MT = (0.3583, 0.6478, 1.1666, 0.9369)   # MSbar g', g, g_s, y_t at m_t = 172.5 GeV (Buttazzo et al. 2013)
-def sm_run(mu):
-    """one-loop SM running of (g', g, g_s, y_t) from m_t to mu"""
+def sm_run(mu, start=None):
+    """one-loop SM running of (g', g, g_s, y_t) from m_t to mu (start = alternative inputs at m_t for sensitivity checks)"""
     def f(t, z):
         g1, g2, g3, yt = z; k = 1/(16*np.pi**2)
         return [k*41/6*g1**3, -k*19/6*g2**3, -k*7*g3**3, k*yt*(4.5*yt**2 - 8*g3**2 - 2.25*g2**2 - 17/12*g1**2)]
-    return solve_ivp(f, (np.log(172.5), np.log(mu)), SM_MT, rtol=1e-10, atol=1e-12).y[:, -1]
+    return solve_ivp(f, (np.log(172.5), np.log(mu)), SM_MT if start is None else start, rtol=1e-10, atol=1e-12).y[:, -1]
 def coup(x, eta):
     sc = H.evaluate(list(x), 'NO')['sc']; c = np.zeros(11)
     c[0], c[2], c[3], c[4], c[5] = sc['lam1'], sc['lam3'], sc['lam4'], sc['lam5'], sc['lam6']; c[1], c[6:] = eta[0], eta[1:]

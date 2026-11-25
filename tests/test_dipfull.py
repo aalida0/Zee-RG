@@ -185,3 +185,11 @@ def test_hw_scale_variants():
         finally: DF.HW_SCALE = 1.0
     P1, P0, Pm = out[1.0][2]['bzHW'], out[0.0][2]['bzHW'], out[-1.0][2]['bzHW']
     assert np.abs(P0[0]).max() == 0 and np.allclose(Pm[0], -P1[0]) and np.abs(P1[0]).max() > 0
+
+
+def test_divided_difference_continuous_at_degeneracy():
+    from zee import loops as LP
+    for x in (0.02, 0.3, 4.0):
+        for f in (LP.FHt, LP.FAt):
+            a, b, c = f(x, x*(1 + 1e-3)), f(x, x), f(x, x*(1 - 1e-3))
+            assert np.isfinite(b) and abs(b/a - 1) < 2e-3 and abs(b/c - 1) < 2e-3

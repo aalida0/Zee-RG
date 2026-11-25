@@ -5,7 +5,7 @@ os.environ.setdefault('ZEE_INPUTS', 'modern')
 import accept as AC
 from zee import flavour as FL
 
-B = json.load(open(R + '/results/benchmarks_input.json'))
+B = json.load(open(R + '/results/benchmarks_input.json')); OLD = json.load(open(R + '/results/benchmarks_input_superseded.json'))
 
 def test_domain_rejects_large_yukawa():
     x = np.array(B['BM1']['x']); x[3] = 0.5
@@ -26,5 +26,5 @@ def test_bsgamma_decoupling_and_sign():
 def test_old_benchmarks_not_accepted():
     pytest.importorskip('Higgs')
     for k in ('BM1', 'BM2'):
-        r = AC.accept(np.array(B[k]['x']), B[k]['eta'], 13.85, n_vac=10)
+        r = AC.accept(np.array(OLD[k]['x']), OLD[k]['eta'], 14.42, n_vac=10)
         assert r['accepted'] is False and not r['cuts'].get('DY', True)
