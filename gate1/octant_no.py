@@ -10,7 +10,7 @@ def s23(x):
     f, Y = H.unpack(x); sc = H.scalar_sector(x); M = N.mnu_hg_leading(f, H.M_LEP, Y, sc['tb'], sc['m1'], sc['m2'], sc['mu'])
     return N.oscillation_observables(M, 'NO')['s23sq']
 best = 1e9
-for c, x in pickle.load(open('/tmp/mbest_NO.pkl', 'rb'))[:int(sys.argv[1])]:
+for c, x in pickle.load(open("/tmp/mbest_NO.pkl", "rb"))[:int(sys.argv[1])]:
     z = np.array(x[:18], float); z[:11] = np.arcsinh(np.clip(z[:11], -.1, .1)/S0)
     try:
         r = least_squares(lambda z: np.append(H.evaluate(tx(z), 'NO')['res'], max(0, .5 - s23(tx(z)))/0.002), np.clip(z, LO, HI), bounds=(LO, HI), max_nfev=200, x_scale=xs)

@@ -16,7 +16,7 @@ def charged_mass_matrix(MHp2, M332, mu, v=V_EW):
 
 
 def charged_spectrum(MHp2, M332, mu, v=V_EW):
-    """Return (m1^2, m2^2, phi) for h1+ = s h+ + c H+, h2+ = c h+ - s H+.
+    """Return (m1^2, m2^2, phi) for h1+ = c H+ - s h+, h2+ = s H+ + c h+ (off-diagonal +mu v/sqrt2).
 
     m1 <= m2. phi lies in [0, pi/2] for mu >= 0, so h1+ is mostly the singlet
     for phi > pi/4. Closed form of eq. (2.9); s2phi of eq. (2.8) follows from it.

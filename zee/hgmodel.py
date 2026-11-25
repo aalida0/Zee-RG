@@ -34,7 +34,7 @@ BR_SM = dict(bb=.5809, WW=.2152, gg=.0818, tt=.0627, cc=.0289, ZZ=.0264, gg_=.00
 # bounds: (limit, normalisation of C.L.)
 BOUNDS = {"tau_mu_g": (4.4e-8, 1.645), "tau_e_g": (3.3e-8, 1.645), "mu_e_g": (4.2e-13, 1.645),
           "tau_3mu": (2.1e-8, 1.645), "tau_mumue": (2.7e-8, 1.645), "Cr_Au": (7e-13, 1.645),
-          "da_e": (2e-12, 1.645), "d_mu": (1e-19, 1.645), "d_e": (8.7e-29, 1.645),
+          "da_e": (2e-12, 1.645), "d_mu": (1e-19, 1.645), "d_e": (4.1e-30, 1.645),
           "h_tau_mu": (0.0120, 1.949), "h_tau_e": (0.0069, 1.949),
           "m_ee": (190e-3, 1.949), "mu_3e": (1.0e-12, 1.645), "m_beta": (2.05, 1.949), "sum_m": (0.23, 1.949)}
 KAPPA = 1.0
@@ -266,13 +266,14 @@ def evaluate(x, ordering="NO", with_stu=True):
     chi_b = {}
     for k, (lim, nrm) in BOUNDS.items():
         B_ = lim / nrm
-        chi_b[k] = (ob[k] / B_) ** 2 if ob[k] >= B_ else 0.0
+        # continuous one-sided Gaussian surrogate centred at zero with sigma = limit/z (z = 1.645 for 90% CL, 1.949 for 95% CL)
+        chi_b[k] = (ob[k] / B_) ** 2
     nat1 = 0.5 * V**2 * abs(Y[2, 1] * Y[1, 2]) * (tb / np.sqrt(1 + tb**2)) ** 2
     nat2 = 0.5 * V**2 * abs(Y[2, 0] * Y[0, 2]) * (tb / np.sqrt(1 + tb**2)) ** 2
-    chi_b["nat_mu"] = (nat1 / (MMU * MTAU)) ** 2 if nat1 >= MMU * MTAU else 0.0
-    chi_b["nat_e"] = (nat2 / (ME_ * MTAU)) ** 2 if nat2 >= ME_ * MTAU else 0.0
+    chi_b["nat_mu"] = max(0.0, (nat1 / (MMU * MTAU)) ** 2 - 1)   # continuous naturalness hinges (HG)
+    chi_b["nat_e"] = max(0.0, (nat2 / (ME_ * MTAU)) ** 2 - 1)
     muB = KAPPA * 4 * np.pi * MH / sc["sba"]
-    chi_b["nat_mu_trilinear"] = (sc["mu"] / muB) ** 2 if sc["mu"] >= muB else 0.0
+    chi_b["nat_mu_trilinear"] = max(0.0, (sc["mu"] / muB) ** 2 - 1)
     eps = np.sqrt(2) / (GF * (np.sin(sc["phi"]) ** 2 / sc["m1"] ** 2 + np.cos(sc["phi"]) ** 2 / sc["m2"] ** 2))
     uni = {"tm": np.sqrt(1 + eps * abs(f[0, 2]) ** 2), "te": np.sqrt(1 + eps * abs(f[1, 2]) ** 2),
            "me": np.sqrt(abs(1 + eps * (abs(f[1, 2]) ** 2 - abs(f[0, 2]) ** 2)))}
@@ -297,9 +298,9 @@ def evaluate(x, ordering="NO", with_stu=True):
     # smooth residual vector for least squares (surrogate for the hinge-type bound terms)
     res = list(osc)
     for k, (lim, nrm) in BOUNDS.items():
-        res.append(3.0 * max(0.0, np.log(max(ob[k], 1e-300) / (lim / nrm))))
-    res.append(3.0 * max(0.0, np.log(max(nat1, 1e-300) / (MMU * MTAU)))); res.append(3.0 * max(0.0, np.log(max(nat2, 1e-300) / (ME_ * MTAU))))
-    res.append(3.0 * max(0.0, np.log(max(sc["mu"], 1e-300) / muB)))
+        res.append(ob[k] / (lim / nrm))
+    res.append(np.sqrt(chi_b["nat_mu"])); res.append(np.sqrt(chi_b["nat_e"]))
+    res.append(np.sqrt(chi_b["nat_mu_trilinear"]))
     res.append((ob["das_mu"] - 3.8e-10) / 6.3e-10 if "amu" in ING else 0.0)
     res.extend([(uni[k] - UNIV[k][0]) / UNIV[k][1] for k in uni])
     if with_stu:

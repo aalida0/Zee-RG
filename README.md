@@ -75,3 +75,12 @@ Effect on the final NO sample: fraction above 1e-16 drops from 12% to 5%; the fi
 ## Envelope search on HTCondor (UChicago AF)
 `gate1/envopt.py` maximises one observable subject to a stable quartic sector up to `Lambda_min`; `condor/` holds the setup script,
 job wrapper and submit file (96 jobs: 6 cutoffs x 4 observables x 4 seeds, 3h20m each). Needs `zee_small.tar.gz` (pickles + NuFIT cache, not in git).
+
+## Revision after the third referee report (2026-11-25)
+- Corrected: electron EDM bound 4.1e-30 e cm (Roussy et al. 2023); boundedness for lambda_h<0 (zee/bfb2.py); continuous one-sided
+  Gaussian likelihood for upper limits (zee/hgmodel.py); charged-scalar rotation h1+ = cos(phi) H+ - sin(phi) h+ (documentation).
+- One-loop quartic, y_t and rho_t beta functions validated against PyR@TE 3: `python validation/compare_pyrate.py` (max rel. diff 6e-13).
+- gate2/: corrected pipeline. walk19.py (region sampling), sample2.py (stability + HiggsTools per point), hcoll.py (HiggsTools with
+  the same quartics, full decay tables, model Higgs width), screen.py (re-validation of stored witnesses), envlocal.py (targeted
+  searches), bench.py/run_bench.py (robustness: fine grid + bisection, ODE tolerance, matching scale, deep vacuum search),
+  bm_records.py -> results/benchmarks.json (full benchmark records), figs2.py (figures).

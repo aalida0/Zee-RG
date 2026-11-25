@@ -3,7 +3,7 @@ Gauge-invariant variables x=H1^dag H1, y=H2^dag H2, z=H1^dag H2 (|z|^2<=xy), s=|
 V4 = V2(x,y,z) + B s + lh s^2,  B = l8 x + l9 y + 2 Re(l10 z).
 For lh>0, min over s>=0 gives  V_red = V2 - min(0,B)^2/(4 lh); the potential is bounded from below iff V_red>=0 on the compact
 set {x=a, y=1-a, z=sqrt(a(1-a)) rho e^{i phi}} (a, rho in [0,1], phi in [0,2pi)), found by a dense grid plus local refinement.
-For lh=0 we require B>=0 on that set and V2>=0 (sufficient; the boundary case is not treated)."""
+For lh<0 the potential is unbounded (pure singlet direction). For lh=0 we require B>=0 on that set and V2>=0."""
 import numpy as np
 from scipy.optimize import minimize
 _A = np.linspace(0, 1, 81); _R = np.linspace(0, 1, 41); _P = np.linspace(0, 2*np.pi, 73)[:-1]
@@ -15,6 +15,7 @@ def vred(c, q):
     v2 = 0.5*l1*x**2 + 0.5*l2*y**2 + l3*x*y + l4*abs(z)**2 + (l5*z**2).real + 2*((l6*x + l7*y)*z).real
     B = l8*x + l9*y + 2*(l10*z).real
     if lh > 0: return v2 - np.minimum(B, 0)**2/(4*lh)
+    if lh < 0: return np.full(np.shape(v2), -1e9)          # unbounded along the singlet direction
     return np.where(B < -1e-12, -1e9, v2)
 def min_vred(c, refine=4):
     v = vred(c, _G); idx = np.argsort(v)[:refine]; best = v.min()

@@ -13,7 +13,7 @@ def lam_valid(c, t0, r):
     Failed candidates return log10(last good scale) + 5*min(0, min V_red) so the local search sees a gradient."""
     v0 = bfb2.min_vred(c, refine=2)
     if vac.unit_max(c) > 8*np.pi: return np.log10(np.exp(t0)) - 1.0 - (vac.unit_max(c) - 8*np.pi)/8
-    if v0 < -1e-4: return np.log10(np.exp(t0)) + 5*v0 - 1.0
+    if v0 < -1e-9: return np.log10(np.exp(t0)) + 5*v0 - 1.0
     ts = SC[SC > t0]
     s = rgfast2.run(c, t0, t1=np.log(1e16), cmax=CM, scales=ts if len(ts) else None, r=r)
     lim = s.t_events[0][0] if len(s.t_events[0]) else np.log(1e16)
@@ -24,7 +24,7 @@ def lam_valid(c, t0, r):
         if t > lim: break
         v = bfb2.min_vred(zz[4:], refine=0)
         if vac.unit_max(zz[4:]) > 8*np.pi: return np.log10(np.exp(best)) - 0.25
-        if v < -1e-4: return np.log10(np.exp(best)) + 5*min(v, 0) - 0.5
+        if v < -1e-9: return np.log10(np.exp(best)) + 5*min(v, 0) - 0.5
         best = t
     return np.log10(np.exp(lim))
 def job(a):
