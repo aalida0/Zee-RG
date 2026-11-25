@@ -29,8 +29,18 @@ Common pattern: heavy, nearly degenerate, nearly aligned second doublet; charged
 
 4. NEXT STEPS (in order)
 a) Run gate2/bench_speed.py 10 on this PC; report times.
-b) Redo the tan(beta) profile on 10 cores (profile_tb.py needs robust starts), report which terms rise, add a short paragraph to the draft and, if useful, seed campaign starts at larger tan(beta) (make_starts.py with a tan(beta) spread).
+b) DONE: tan(beta) profile (results/profile_tb.json; chi2 10.05/14.0/21.2/57.2/150 at 0.38/0.45/0.5/0.6/0.7; limit tan(beta)<~0.45 from tau->mu gamma; paragraph 'Range of tan(beta)' in the draft). Seeding starts at larger tan(beta) is pointless.
 c) Pilot (20 chains) on the AF (condor/README.md: make_run.sh RUN_ID COMMIT; python3 make_campaign_sub.py RUN_ID pilot; condor_submit; collector with PLOTDIR). Check: all chains complete, no HiggsTools errors, acceptance 0.2-0.7, >20 stored points per sample chain.
 d) If the pilot is clean, submit the full 2000 chains; collect; run the finalists through gate2/benchmarks.py (BM_INPUT=results/campaign_finalists.json); then regenerate the results section, figures (scan figures exist in the collector) and the draft's "Scope of the results".
 e) Final consistency pass of the draft (numbers vs results/benchmarks.json, hygiene, EPJC formatting), then Zenodo later.
 ```
+
+## Report v8 work done (2026-11-25, commit 60272dd)
+- campaign.py: coarse score min(default,q1.1,q0.9), margin/climb logic, fail-closed Higgs (ZEE_REQUIRE_HIGGS), manifest with env/data hashes/packages; collector: diagnostic vs verified fractions (frac_final_pass), per-group job-wall/s-per-proposal median+p95, never-entered-target and no-record counts, manifest/ZEE_INPUTS consistency check.
+- hcoll.py: H->hh and h2+->h1+ h now go through HiggsTools scalar-pair channels (BRs rescale; before, H BRs did not, 2.3% at BM2); new test in tests/test_chargedbr.py.
+- Yukawa perturbativity cut max(|D|,2|f|,sqrt2 tb mt/v)<sqrt(4pi) in accept.py and stage_gate (benchmarks 0.43).
+- bench.trajectory: start failures are encoded fail='start:...' (log10Lambda=-1), never the first grid scale; results/benchmarks.json regenerated (BM1 certified 11.60, BM2 12.07; both PASS).
+- Draft: softened 'generally fail'/'large part', removed claim that Higgs LFV costs cutoff, spec-shift wording, conversion description, tan(beta) paragraph, GM2Calc provenance (2.3.1, 372ee01).
+## Still to do
+- Collector run on pilot output; pilot (20 chains) on the AF worker nodes, then full campaign (user).
+- Optional: spectrum-shift archive with full-precision records; small independent lambda4/5/6 neighbourhood; GM2Calc range 600-900 GeV extension.
