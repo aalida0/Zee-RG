@@ -1,4 +1,5 @@
-import sys,pickle; sys.path.insert(0,'/home/claude/zee_fit/gate1')
+_R = __import__('os').path.dirname(__import__('os').path.dirname(__import__('os').path.abspath(__file__)))
+import sys,pickle; sys.path.insert(0,_R + '/gate1')
 import numpy as np, gate1 as G
 rng=np.random.default_rng(11)
 r=pickle.load(open('/tmp/gate1_stage1.pkl','rb'))['IO']

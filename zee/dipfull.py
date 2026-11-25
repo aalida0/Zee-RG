@@ -15,7 +15,9 @@ Checks (tests/test_dipfull.py): the diagonal limit gives the textbook one-loop a
 (ln - 7/6), pseudoscalar (-(ln - 11/6)) and charged scalar (-1/96 pi^2); Barr-Zee signs: CP-even top loop
 negative, CP-odd positive, W loop opposite to top.
 Diagonal moments: a_I = m_I^2 Re(A_L + A_R), d_I/e = m_I Im(A_R - A_L)/2.
-Not included: H+ W gamma (charged-current) Barr-Zee sets and two-loop terms beyond Omura Eq. 20.
+  bzHW: H+- W-+ gamma Barr-Zee sets (Ilisie 1502.04199 Eqs. 22-24) for h1+, h2+ with the H+ content of each state; an estimate
+       (see bz_HW) that is below 1% of the amplitude at the benchmarks.
+Not included: two-loop terms beyond these.
 """
 import numpy as np
 from . import V_EW as V
@@ -40,6 +42,7 @@ def charged_trilinears(sc, l7=0.0, l8=0.0, l10=0.0):
         dhh = a * l8 + b * l10
         dHh = -a * sc["mu"] / (np.sqrt(2) * V)
         out[p] = (c * c * dHH + s * s * dhh + 2 * s * c * dHh, s * s * dHH + c * c * dhh - 2 * s * c * dHh)
+        out["raw_" + p] = (dHH, dhh, dHh)      # couplings in the (H+, h+) basis, used by the H+ W gamma loops
     return out
 
 
@@ -77,9 +80,79 @@ def bz_kernels(Lam, mass, sc, trilin):
     return K
 
 
+def _panels():
+    e = np.concatenate([[0.0], 10.0 ** np.arange(-9, -0.5, 1.0), [0.5]])
+    e = np.unique(np.concatenate([e, 1 - e]))                 # geometric panels towards both endpoints
+    g, w = np.polynomial.legendre.leggauss(16)
+    xs = np.concatenate([0.5 * (b - a) * g + 0.5 * (a + b) for a, b in zip(e[:-1], e[1:])])
+    ws = np.concatenate([0.5 * (b - a) * w for a, b in zip(e[:-1], e[1:])])
+    return xs, ws
+_XG, _WG = _panels()
+HW_ON = True
+NC, QT, QB = 3, 2.0 / 3, -1.0 / 3
+MT, MB = 172.5, 4.18
+
+
+def _G(wa, wb, x):
+    """Loop function of Ilisie 1502.04199 Eq. (29), read as ln(X/y)/(y - X) with X = wa x + wb (1-x), y = x(1-x): it is the
+    k^2 integral of the two propagators of the Barr-Zee construction; finite at X = y."""
+    X = wa * x + wb * (1 - x); y = x * (1 - x); t = X / y
+    d = np.where(np.abs(t - 1) < 1e-7, -1.0, np.log(t) / (1 - t + (np.abs(t - 1) < 1e-7)))
+    return d / y
+
+
+def bz_HW(Dd, mass, sc, trilin):
+    """H+- W-+ gamma Barr-Zee amplitudes (Ilisie 1502.04199 Eqs. 22-24, S^(4), S^(5), S^(6)), A_L[J,I], A_R[J,I].
+    The charged mass eigenstates h_k+ contain H+ with amplitude u = (cos phi, -sin phi) and the diagrams are summed over k
+    (outer) and, for the contact-type loop, over the internal mass eigenstate j. The lepton vertex is conj(Dd[I,J]) (the neutrino
+    carries the flavour of the initial lepton). Valid only as a leading estimate: the formulae are transcribed from the
+    paper's text (the definition of G1 is inferred as G(1, .)), the overall sign of the three sets is not independently checked,
+    and they are small (see tests/test_dipfull.py::test_hw_small)."""
+    if "raw_h" not in trilin:
+        return np.zeros((3, 3), complex), np.zeros((3, 3), complex)
+    c, s = np.cos(sc["phi"]), np.sin(sc["phi"])
+    u = np.array([c, -s]); e = np.array([[c, s], [-s, c]])        # H+ content and (H+, h+) content of h1+, h2+
+    mk = np.array([sc["m1"], sc["m2"]]); tb = sc["tb"]; sba, cba = sc["sba"], sc["cba"]
+    x = _XG; w = _WG; y1 = x * (1 - x)
+    pref = ALPHA / (128 * np.sqrt(2) * np.pi**3 * SW2)
+    zu = -tb                                                         # varsigma_u = varsigma_d (type-I-like quarks)
+    wa, wb, sg, kind, cf = [], [], [], [], []                         # one row per G evaluation: G(wa, wb) with sign sg
+    for k in range(2):
+        mH2 = mk[k] ** 2; dm = mH2 - MW**2
+        wa += [MT**2 / mH2, MT**2 / MW**2]; wb += [MB**2 / mH2, MB**2 / MW**2]; sg += [1.0, -1.0]; kind += [4, 4]
+        cf += [2 * NC * u[k] ** 2 / (V * dm)] * 2
+        for ph, Z5, R2 in (("h", sba * cba, cba), ("H", -cba * sba, -sba)):
+            mp2 = mass[ph] ** 2
+            wa += [MW**2 / mH2, 1.0]; wb += [mp2 / mH2, mp2 / MW**2]; sg += [1.0, -1.0]; kind += [5, 5]
+            cf += [u[k] ** 2 * Z5 / (V * dm) * 1.0] * 2
+            dHH, dhh, dHh = trilin["raw_" + ph]; Lam2 = np.array([[dHH, dHh], [dHh, dhh]])
+            for j in range(2):
+                lam = e[k] @ Lam2 @ e[j]
+                wa += [mk[j] ** 2 / mH2, mk[j] ** 2 / MW**2]; wb += [mp2 / mH2, mp2 / MW**2]; sg += [1.0, -1.0]; kind += [6, 6]
+                cf += [V * R2 * u[k] * lam * u[j] / dm] * 2
+    wa, wb, sg, kind, cf = (np.array(a_) for a_ in (wa, wb, sg, kind, cf))
+    Gm = _G(wa[:, None], wb[:, None], x[None, :]) * sg[:, None]       # [rows, x]
+    # x-dependent weights of the three sets; (5) depends on k and phi through (mH2 + MW^2 - mp2)
+    poly4 = (QT * x + QB * (1 - x)) * zu * (MB**2 * y1 + MT**2 * x * (1 + x))
+    poly6 = x**2 * (x - 1)
+    P = np.empty_like(Gm)
+    r = 0
+    for k in range(2):
+        mH2 = mk[k] ** 2
+        P[r:r + 2] = poly4; r += 2
+        for ph in ("h", "H"):
+            P[r:r + 2] = x**2 * ((mH2 + MW**2 - mass[ph] ** 2) * (1 - x) - 4 * MW**2); r += 2
+            for j in range(2):
+                P[r:r + 2] = poly6; r += 2
+    coef = float(np.sum(cf * (Gm * P * w[None, :]).sum(1)))
+    AL = pref * coef * Dd.conj().T / M[None, :]                  # A_L[J, I] = pref coef conj(Dd[I, J]) / m_I
+    AR = pref * coef * Dd / M[None, :]                           # hermiticity: X_R[J, I] = conj(X_L[I, J]), X = m_I A
+    return AL, AR
+
+
 def amplitudes(Lam, mass, f, Dd, sc, trilin, parts=False):
     """Return (A_L, A_R) 3x3 [J, I]; with parts=True also a dict of the components."""
-    P = {k: [np.zeros((3, 3), complex), np.zeros((3, 3), complex)] for k in ("n1", "ch", "bzf", "bzW", "bzC")}
+    P = {k: [np.zeros((3, 3), complex), np.zeros((3, 3), complex)] for k in ("n1", "ch", "bzf", "bzW", "bzC", "bzHW")}
     for p, L in Lam.items():
         m2 = mass[p] ** 2
         lg = np.log(m2 / M**2) - 1.5
@@ -102,6 +175,8 @@ def amplitudes(Lam, mass, f, Dd, sc, trilin, parts=False):
             R = L * K[p][key] / M[None, :]
             P[lab][1] += R
             P[lab][0] += (L * K[p][key]).conj().T / M[None, :]
+    if HW_ON:
+        P["bzHW"][0], P["bzHW"][1] = bz_HW(Dd, mass, sc, trilin)
     AL = sum(v[0] for v in P.values()); AR = sum(v[1] for v in P.values())
     return (AL, AR, P) if parts else (AL, AR)
 

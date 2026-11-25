@@ -1,6 +1,7 @@
 """Profile-like range search: extremise an observable inside the region chi2 <= chi2_min + dchi."""
 import sys, pickle, time, numpy as np
-sys.path.insert(0, '/home/claude/zee_fit')
+_R = __import__('os').path.dirname(__import__('os').path.dirname(__import__('os').path.abspath(__file__)))
+sys.path.insert(0, _R)
 from zee import hgmodel as H
 
 OBS = ["tau_mu_g", "tau_e_g", "mu_e_g", "Cr_Au", "h_tau_mu", "h_tau_e", "m1", "mA", "mH", "sba"]

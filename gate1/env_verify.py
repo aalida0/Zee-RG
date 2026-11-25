@@ -2,7 +2,8 @@
 and the stored quartic witness (unitarity, BFB, perturbativity along the RG flow; 80-start global-minimum test).
 Usage: ZEE_INPUTS=modern python gate1/env_verify.py OUTDIR RESULT.pkl"""
 import sys, glob, json, pickle, numpy as np
-sys.path.insert(0, '/home/claude/zee_fit'); sys.path.insert(0, '/home/claude/zee_fit/gate1')
+_R = __import__('os').path.dirname(__import__('os').path.dirname(__import__('os').path.abspath(__file__)))
+sys.path.insert(0, _R); sys.path.insert(0, _R + '/gate1')
 from multiprocessing import Pool
 import lmax2 as L, m_filter_l4w as M, ht, postfit as PF
 from zee import vac

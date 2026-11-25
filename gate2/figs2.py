@@ -1,6 +1,7 @@
 """Figures and numbers for the revised draft. Usage: ZEE_INPUTS=modern python gate2/figs2.py DRAFT/figures"""
 import sys, json, pickle, numpy as np, pandas as pd
-sys.path.insert(0, '/home/claude/zee_fit'); sys.path.insert(0, '/home/claude/zee_fit/gate2')
+_R = __import__('os').path.dirname(__import__('os').path.dirname(__import__('os').path.abspath(__file__)))
+sys.path.insert(0, _R); sys.path.insert(0, _R + '/gate2')
 import matplotlib; matplotlib.use('Agg'); import matplotlib.pyplot as plt
 import bench
 from scipy.integrate import solve_ivp

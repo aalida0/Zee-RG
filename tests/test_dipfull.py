@@ -1,6 +1,7 @@
 """Production dipole kernel (zee/dipfull.py): textbook limits and Barr-Zee signs."""
 import numpy as np
 from zee import dipfull as D
+DF = D
 from zee.observables import M_LEP
 
 M = 500.0; mmu = M_LEP[1]
@@ -76,3 +77,80 @@ def test_charged_bz_heavy_limit():
     num = LF.F2(w)
     approx = -(np.log(w) + 5 / 3) / (12 * w)   # leading-log coefficient -1/12 = top-loop/hgg ratio
     assert abs(num / approx - 1) < 1e-3
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# H+- W-+ gamma Barr-Zee sets (Ilisie 1502.04199 Eqs. 22-24): independent quad implementation of the three formulas in the
+# unmixed limit (phi = 0: h1+ = H+, h2+ = h+ decoupled from the lepton vertex) against zee.dipfull.bz_HW.
+def _G_ref(wa, wb, x):
+    X = wa*x + wb*(1 - x); y = x*(1 - x)
+    return np.log(X/y)/(y - X)
+
+
+def _quad(f):
+    from scipy.integrate import quad
+    return quad(f, 0, 1, points=[1e-5, 1e-4, 1e-3, 1e-2, 0.5, 0.99], limit=800, epsabs=0, epsrel=1e-10)[0]
+
+
+def _hw_setup(mH=600.0, mHc=700.0, tb=0.8, sba=0.999, mA=650.0):
+    cba = np.sqrt(1 - sba**2)
+    sc = dict(phi=0.0, m1=mHc, m2=1500.0, tb=tb, sba=sba, cba=cba)
+    tri = dict(raw_h=(0.31, 0.0, 0.0), raw_H=(0.47, 0.0, 0.0))
+    return sc, dict(h=125.5, H=mH, A=mA), tri
+
+
+def _ilisie_diag(sc, mass, tri, Dmm):
+    """Delta a_mu^{(4)+(5)+(6)} of Ilisie for the muon with varsigma_l = v D/(sqrt2 m_mu), pure 2HDM (phi = 0)."""
+    V, MW, SW2, al = DF.V, DF.MW, DF.SW2, DF.ALPHA
+    m = DF.M[1]; zl = V*Dmm/(np.sqrt(2)*m); zu = -sc['tb']; MH = sc['m1']; dm = MH**2 - MW**2
+    pre = al*m**2/(64*np.pi**3*SW2)
+    a4 = al*m**2*3/(32*np.pi**3*SW2*V**2*dm)*_quad(lambda x: (DF.QT*x + DF.QB*(1 - x))*(zu*zl*DF.MB**2*x*(1 - x) + zu*zl*DF.MT**2*x*(1 + x))
+         *(_G_ref(DF.MT**2/MH**2, DF.MB**2/MH**2, x) - _G_ref(DF.MT**2/MW**2, DF.MB**2/MW**2, x)))
+    a5 = a6 = 0.0
+    for ph, R1, R2 in (("h", sc['sba'], sc['cba']), ("H", sc['cba'], -sc['sba'])):
+        mp2 = mass[ph]**2
+        a5 += pre/(V**2*dm)*zl*R1*R2*_quad(lambda x: x**2*((MH**2 + MW**2 - mp2)*(1 - x) - 4*MW**2)
+              *(_G_ref(MW**2/MH**2, mp2/MH**2, x) - _G_ref(1.0, mp2/MW**2, x)))
+        lam = tri['raw_' + ph][0]
+        a6 += pre/dm*zl*R2*lam*_quad(lambda x: x**2*(x - 1)*(_G_ref(1.0, mp2/MH**2, x) - _G_ref(MH**2/MW**2, mp2/MW**2, x)))
+    return a4 + a5 + a6
+
+
+def test_hw_matches_ilisie_diagonal():
+    sc, mass, tri = _hw_setup()
+    Dd = np.zeros((3, 3), complex); Dd[1, 1] = 0.013
+    AL, AR = DF.bz_HW(Dd, mass, sc, tri)
+    got = DF.M[1]**2*np.real(AL[1, 1] + AR[1, 1])
+    ref = _ilisie_diag(sc, mass, tri, 0.013)
+    assert abs(got/ref - 1) < 1e-6
+
+
+def test_hw_flavour_structure():
+    """A_L[J,I] is proportional to conj(Dd[I,J])/m_I and A_R[J,I] to Dd[J,I]/m_I with the same real coefficient."""
+    sc, mass, tri = _hw_setup()
+    rng = np.random.default_rng(2); Dd = rng.normal(size=(3, 3)) + 1j*rng.normal(size=(3, 3))
+    AL, AR = DF.bz_HW(Dd, mass, sc, tri)
+    k = AL[1, 2]*DF.M[2]/np.conj(Dd[2, 1])
+    assert abs(k.imag) < 1e-12*abs(k)
+    for J in range(3):
+        for I in range(3):
+            assert abs(AL[J, I] - k*np.conj(Dd[I, J])/DF.M[I]) < 1e-9*abs(AL[J, I])
+            assert abs(AR[J, I] - k*Dd[J, I]/DF.M[I]) < 1e-9*abs(AR[J, I])
+
+
+def test_hw_alignment_and_decoupling():
+    sc, mass, tri = _hw_setup(sba=1.0)
+    Dd = np.zeros((3, 3), complex); Dd[1, 2] = 0.02
+    AL, _ = DF.bz_HW(Dd, mass, sc, dict(tri, raw_h=(0.0, 0.0, 0.0)))
+    # exact alignment: h and the (5) sets vanish; only the top-bottom set and the H+H- contact set through H (R2 = -1) remain
+    assert np.isfinite(AL).all()
+    sc2, mass2, tri2 = _hw_setup(); big = dict(mass2, H=3*mass2['H'], A=3*mass2['A'])
+    sc3 = dict(sc2, m1=3*sc2['m1'])
+    a1 = abs(DF.bz_HW(Dd, mass2, sc2, tri2)[0][2, 1]); a3 = abs(DF.bz_HW(Dd, big, sc3, tri2)[0][2, 1])
+    assert a3 < 0.5*a1          # heavier charged scalar: suppressed (non-trivially, with logs)
+
+
+def test_G_finite_at_degeneracy():
+    x = np.array([0.2, 0.5, 0.8]); X = x*(1 - x)
+    v = DF._G(X/x*0 + 0.0, X/(1 - x), x)          # wa x + wb (1-x) = x(1-x) -> t = 1
+    assert np.isfinite(v).all() and np.allclose(v, -1/(x*(1 - x)), rtol=1e-6)

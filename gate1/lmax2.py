@@ -2,7 +2,8 @@
 subject to the h->gamma gamma constraint. Random stage (n0 draws, as in the filter) then adaptive local search.
 Usage: ZEE_INPUTS=modern python lmax.py STRIDE NPROC [N0 NIT]"""
 import sys, pickle, numpy as np
-sys.path.insert(0, '/home/claude/zee_fit'); sys.path.insert(0, '/home/claude/zee_fit/gate1')
+_R = __import__('os').path.dirname(__import__('os').path.dirname(__import__('os').path.abspath(__file__)))
+sys.path.insert(0, _R); sys.path.insert(0, _R + '/gate1')
 from multiprocessing import Pool
 from zee import rgfast2, bfb2, vac
 import m_filter_l4w as M

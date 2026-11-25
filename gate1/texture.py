@@ -3,7 +3,8 @@ Stage 'fit': multistart least squares for NO and IO from the slice best points w
 Stage 'walk': random walk (Delta chi2 <= 3.84) from the best relaxed NO points, as walk2.
 Usage: ZEE_INPUTS=modern python texture.py fit NSEED | walk NCHAIN NIT"""
 import sys, pickle, time, numpy as np
-sys.path.insert(0, '/home/claude/zee_fit')
+_R = __import__('os').path.dirname(__import__('os').path.dirname(__import__('os').path.abspath(__file__)))
+sys.path.insert(0, _R)
 from multiprocessing import Pool
 from scipy.optimize import least_squares
 from zee import hgmodel as H

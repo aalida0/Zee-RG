@@ -1,5 +1,6 @@
 import sys, pickle, numpy as np
-sys.path.insert(0, '/home/claude/zee_fit')
+_R = __import__('os').path.dirname(__import__('os').path.dirname(__import__('os').path.abspath(__file__)))
+sys.path.insert(0, _R)
 from zee import hgmodel as H
 pts = pickle.load(open('/tmp/s1_NO.pkl', 'rb')); cmin = pts[0][0]; lim = cmin + 3.84
 seeds = [(c, x) for c, x in pts if c <= lim]

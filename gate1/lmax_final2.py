@@ -1,7 +1,8 @@
 """Lambda_max (optimised and random-stage) for every point of the final NO sample (mfilt4w), with the HiggsTools keep flags.
 Usage: ZEE_INPUTS=modern python lmax_final.py NPROC"""
 import sys, pickle, numpy as np
-sys.path.insert(0, '/home/claude/zee_fit'); sys.path.insert(0, '/home/claude/zee_fit/gate1')
+_R = __import__('os').path.dirname(__import__('os').path.dirname(__import__('os').path.abspath(__file__)))
+sys.path.insert(0, _R); sys.path.insert(0, _R + '/gate1')
 from multiprocessing import Pool
 import lmax2 as L, ht
 def job(a):

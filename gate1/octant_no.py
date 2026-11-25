@@ -1,6 +1,7 @@
 """Minimum chi2 for NO with theta23 forced into the upper octant (penalty for s23^2 < 0.5). Usage: ZEE_INPUTS=modern python octant_no.py NSEED"""
 import sys, pickle, numpy as np
-sys.path.insert(0, '/home/claude/zee_fit')
+_R = __import__('os').path.dirname(__import__('os').path.dirname(__import__('os').path.abspath(__file__)))
+sys.path.insert(0, _R)
 from scipy.optimize import least_squares
 from zee import hgmodel as H, neutrino as N
 S0 = 1e-6; ZM = np.arcsinh(0.1/S0); LO, HI = H.LO.copy(), H.HI.copy(); LO[:11] = -ZM; HI[:11] = ZM

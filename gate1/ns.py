@@ -1,5 +1,6 @@
 import sys, os, pickle, numpy as np
-sys.path.insert(0, '/home/claude/zee_fit'); os.environ['ZEE_INPUTS'] = 'modern'
+_R = __import__('os').path.dirname(__import__('os').path.dirname(__import__('os').path.abspath(__file__)))
+sys.path.insert(0, _R); os.environ['ZEE_INPUTS'] = 'modern'
 import dynesty
 from dynesty import NestedSampler
 from multiprocessing import Pool

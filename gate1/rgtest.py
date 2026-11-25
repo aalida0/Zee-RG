@@ -1,5 +1,6 @@
 import sys, pickle, numpy as np
-sys.path.insert(0, '/home/claude/zee_fit')
+_R = __import__('os').path.dirname(__import__('os').path.dirname(__import__('os').path.abspath(__file__)))
+sys.path.insert(0, _R)
 from zee import hgmodel as H, rge, neutrino as N
 V = H.V; ML = H.M_LEP
 G0 = np.array([0.36, 0.64, 1.05]); YT0 = 0.88

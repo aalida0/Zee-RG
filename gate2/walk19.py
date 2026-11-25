@@ -1,7 +1,8 @@
 """Random-walk sampling of the NO region (Delta chi2 <= 3.84, 19 parameters, lambda4 free) with the corrected likelihood.
 Resumable: one file per chain. Usage: ZEE_INPUTS=modern python gate2/walk19.py NCHAIN NIT NPROC"""
 import sys, os, pickle, numpy as np
-sys.path.insert(0, '/home/claude/zee_fit')
+_R = __import__('os').path.dirname(__import__('os').path.dirname(__import__('os').path.abspath(__file__)))
+sys.path.insert(0, _R)
 from multiprocessing import Pool
 from zee import hgmodel as H
 S0 = 1e-6; ZM = np.arcsinh(0.1/S0); SQ = np.sqrt(4*np.pi)

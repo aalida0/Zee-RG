@@ -1,5 +1,6 @@
 import sys, pickle, numpy as np, itertools
-sys.path.insert(0, '/home/claude/zee_fit'); sys.path.insert(0, '/home/claude/zee_fit/gate1')
+_R = __import__('os').path.dirname(__import__('os').path.dirname(__import__('os').path.abspath(__file__)))
+sys.path.insert(0, _R); sys.path.insert(0, _R + '/gate1')
 from multiprocessing import Pool
 from scipy.integrate import solve_ivp
 from zee import rge, rgeq

@@ -1,7 +1,8 @@
 """Effect of the second-doublet top Yukawa rho_t = -yt tan(beta) (Phi2 free of quark couplings in the generic basis, HG Sec. 2.5)
 on the stable-to-Lambda fractions. Usage: ZEE_INPUTS=modern python rg_rho.py STRIDE NPROC"""
 import sys, pickle, numpy as np
-sys.path.insert(0, '/home/claude/zee_fit'); sys.path.insert(0, '/home/claude/zee_fit/gate1')
+_R = __import__('os').path.dirname(__import__('os').path.dirname(__import__('os').path.abspath(__file__)))
+sys.path.insert(0, _R); sys.path.insert(0, _R + '/gate1')
 from multiprocessing import Pool
 from zee import rgfast, rgfast2
 import m_filter_l4w as M

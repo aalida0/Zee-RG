@@ -3,7 +3,8 @@ Starts from the best validated point with cutoff >= LOGL; a step is accepted if 
 and the current quartic choice (or a new one from a short search) stays stable to 10^LOGL; HiggsTools is checked on acceptance.
 Usage: ZEE_INPUTS=modern python gate2/envlocal.py OBS LOGL SEED WALL OUTDIR"""
 import sys, os, json, time, pickle, numpy as np
-sys.path.insert(0, '/home/claude/zee_fit'); sys.path.insert(0, '/home/claude/zee_fit/gate1'); sys.path.insert(0, '/home/claude/zee_fit/gate2')
+_R = __import__('os').path.dirname(__import__('os').path.dirname(__import__('os').path.abspath(__file__)))
+sys.path.insert(0, _R); sys.path.insert(0, _R + '/gate1'); sys.path.insert(0, _R + '/gate2')
 import lmax2 as L, m_filter_l4w as M, hcoll, accept as AC
 from zee import hgmodel as H, vac
 obs, logL, seed, wall, out = sys.argv[1], float(sys.argv[2]), int(sys.argv[3]), float(sys.argv[4]), sys.argv[5]

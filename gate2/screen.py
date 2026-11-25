@@ -2,7 +2,8 @@
 lambda_h<0 boundedness, same-Lagrangian HiggsTools (gate2/hcoll.py), fine-grid cutoff (10/decade) and global minimum.
 Usage: ZEE_INPUTS=modern python gate2/screen.py NPROC OUT.pkl"""
 import sys, glob, json, pickle, numpy as np
-sys.path.insert(0, '/home/claude/zee_fit'); sys.path.insert(0, '/home/claude/zee_fit/gate1'); sys.path.insert(0, '/home/claude/zee_fit/gate2')
+_R = __import__('os').path.dirname(__import__('os').path.dirname(__import__('os').path.abspath(__file__)))
+sys.path.insert(0, _R); sys.path.insert(0, _R + '/gate1'); sys.path.insert(0, _R + '/gate2')
 from multiprocessing import Pool
 import lmax2 as L, m_filter_l4w as M, hcoll, accept as AC
 from zee import vac

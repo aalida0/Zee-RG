@@ -1,7 +1,8 @@
 """Post-fit observables for the final NO sample: B->X_s gamma (charged scalars), HiggsBounds with charged scalars, neutrino predictions.
 Usage: ZEE_INPUTS=modern python gate1/postfit.py OUT.csv"""
 import sys, pickle, numpy as np
-sys.path.insert(0, '/home/claude/zee_fit'); sys.path.insert(0, '/home/claude/zee_fit/gate1')
+_R = __import__('os').path.dirname(__import__('os').path.dirname(__import__('os').path.abspath(__file__)))
+sys.path.insert(0, _R); sys.path.insert(0, _R + '/gate1')
 import Higgs.predictions as HP
 import ht
 from zee import hgmodel as H, neutrino as N

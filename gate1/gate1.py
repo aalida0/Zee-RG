@@ -3,7 +3,8 @@ Restriction as in HG: f_emu = 0; Y2^{ee,emu,mue,mumu} = 0; f real after rephasin
 """
 import sys, numpy as np
 from scipy.optimize import least_squares
-sys.path.insert(0, "/home/claude/zee_fit")
+_R = __import__('os').path.dirname(__import__('os').path.dirname(__import__('os').path.abspath(__file__)))
+sys.path.insert(0, _R)
 from zee import neutrino as N, observables as O, dipoles as P, stu as S
 from zee.neutrino import oscillation_observables
 

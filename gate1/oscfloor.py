@@ -1,5 +1,6 @@
 import sys, pickle, numpy as np
-sys.path.insert(0, '/home/claude/zee_fit')
+_R = __import__('os').path.dirname(__import__('os').path.dirname(__import__('os').path.abspath(__file__)))
+sys.path.insert(0, _R)
 from scipy.optimize import least_squares
 from zee import hgmodel as H, neutrino as N
 ordering, seed, nstart, out = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), sys.argv[4]

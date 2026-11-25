@@ -1,6 +1,7 @@
 """Benchmark records (YAML-like JSON) with all observables, couplings, and amplitude decompositions."""
 import sys, json, pickle, numpy as np
-sys.path.insert(0, '/home/claude/zee_fit'); sys.path.insert(0, '/home/claude/zee_fit/gate1'); sys.path.insert(0, '/home/claude/zee_fit/gate2')
+_R = __import__('os').path.dirname(__import__('os').path.dirname(__import__('os').path.abspath(__file__)))
+sys.path.insert(0, _R); sys.path.insert(0, _R + '/gate1'); sys.path.insert(0, _R + '/gate2')
 import hcoll, postfit, bench
 from zee import hgmodel as H, neutrino as N
 BM = {'BM1': '/tmp/loc/loc_mu_e_g_12_0.json', 'BM2': '/tmp/loc2/loc_mu_e_g_16_1.json', 'BM3': '/tmp/envres2/out2/env_h_tau_mu_12_23.json'}

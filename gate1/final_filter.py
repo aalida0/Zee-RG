@@ -1,5 +1,6 @@
 import sys, pickle, numpy as np
-sys.path.insert(0, '/home/claude/zee_fit')
+_R = __import__('os').path.dirname(__import__('os').path.dirname(__import__('os').path.abspath(__file__)))
+sys.path.insert(0, _R)
 from multiprocessing import Pool
 from zee import hgmodel as H, rgfast, bfb
 LAMS = [1e4, 1e8, 1e16]; CM = {'hg': np.sqrt(4*np.pi), '4pi': 4*np.pi}
