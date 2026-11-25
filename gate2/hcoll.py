@@ -11,7 +11,8 @@ sys.path.insert(0, _R); sys.path.insert(0, _R + '/gate1')
 import Higgs.predictions as HP, Higgs.bounds as HB, Higgs.signals as HS
 from zee import hgmodel as H, neutrino as N, dy as DY, widths as WD, dipfull as DF, chargedbr as CB
 import m_filter_l4w as M
-_b = HB.Bounds(os.environ.get('ZEE_HBDATA', '/tmp/hbdataset')); _s = HS.Signals(os.environ.get('ZEE_HSDATA', '/tmp/hsdataset'))
+_D = os.environ.get('ZEE_DATA')    # directory holding hbdataset/ and hsdataset/ (no /tmp default when set)
+_b = HB.Bounds(os.environ.get('ZEE_HBDATA', os.path.join(_D, 'hbdataset') if _D else '/tmp/hbdataset')); _s = HS.Signals(os.environ.get('ZEE_HSDATA', os.path.join(_D, 'hsdataset') if _D else '/tmp/hsdataset'))
 V = H.V; MW, MZ, MT, MB = 80.379, 91.1876, 172.5, 4.18; G2 = 2*MW/V; CW = MW/MZ; GF = 1/(np.sqrt(2)*V**2)
 lam = lambda a, b, c: max(a*a + b*b + c*c - 2*a*b - 2*a*c - 2*b*c, 0.0)
 def svw(m1, m2, mv, G):   # Gamma(S1 -> S2 V) for vertex G (p1+p2)^mu
