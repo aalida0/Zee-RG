@@ -3,7 +3,8 @@ The statistic is hgmodel.evaluate(x, eta)['chi2'] (the free quartics eta enter R
 charged-scalar loops), the same number is stored and reported. Every individual cut is recorded.
 accept(x, eta, cmin, ...) -> dict(accepted=bool, chi2, cuts={...}, obs, collider, Lf, Lf_status, vacuum)"""
 import sys, numpy as np
-sys.path.insert(0, '/home/claude/zee_fit'); sys.path.insert(0, '/home/claude/zee_fit/gate1'); sys.path.insert(0, '/home/claude/zee_fit/gate2')
+_R = __import__('os').path.dirname(__import__('os').path.dirname(__import__('os').path.abspath(__file__)))
+sys.path.insert(0, _R); sys.path.insert(0, _R + '/gate1'); sys.path.insert(0, _R + '/gate2')
 from zee import hgmodel as H, vac
 import lmax2 as L
 
@@ -28,7 +29,7 @@ def accept(x, eta, cmin, logL=None, collider=True, n_vac=80, seed=11, stop_early
         import hcoll
         col, _ = hcoll.run(x, eta); rec['collider'] = col
         cuts.update(HB=bool(col['HB_allowed']), HS=bool(col['HS_chi2'] - HSMIN <= DCHI2),
-                    h_tau_mu=bool(col['BR_h_tau_mu'] <= H_TAU_MU), h_tau_e=bool(col['BR_h_tau_e'] <= H_TAU_E))
+                    DY=bool(col['DY_allowed']), h_tau_mu=bool(col['BR_h_tau_mu'] <= H_TAU_MU), h_tau_e=bool(col['BR_h_tau_e'] <= H_TAU_E))
         if stop_early and not all(cuts.values()): rec['accepted'] = False; return rec
     c = quartics(sc, eta); t0 = np.log(min(sc['m1'], sc['mA'], sc['mH']))
     Lf, why = L.lam_valid(c, t0, -sc['tb'], status=True); rec.update(Lf=float(Lf), Lf_status=why)
