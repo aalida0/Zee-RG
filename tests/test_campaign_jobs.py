@@ -23,3 +23,13 @@ def test_full_job_list_is_unique_and_allocated_by_pilot_evidence(tmp_path):
 
 def test_pilot_kinds_stay_small(tmp_path):
     assert len(_jobs(tmp_path, 'pilot')[0]) == 20 and len(_jobs(tmp_path, 'pilot2')[0]) == 11
+
+
+def test_topup_adds_only_missing_jobs_and_writes_union(tmp_path):
+    out = tmp_path / 'zee_env' / 'runs' / 'T' / 'out'; out.mkdir(parents=True)
+    full, _ = _jobs(tmp_path, 'full')
+    for j in full[:50]: json.dump(dict(j), open(out / ('camp_T_%s_%g_%d.json' % (j['mode'].replace(':', '-'), j['logL'], j['seed'])), 'w'))
+    p = subprocess.run([sys.executable, os.path.join(ROOT, 'condor', 'make_campaign_sub.py'), 'T', 'topup'], cwd=tmp_path, capture_output=True, text=True, env=dict(os.environ, HOME=str(tmp_path)))
+    assert p.returncode == 0, p.stderr
+    U = json.load(open(tmp_path / 'expected_jobs_union_T.json'))
+    assert len(U) == len(full) and (tmp_path / 'campaign.sub').read_text().count('\nqueue\n') == len(full) - 50
