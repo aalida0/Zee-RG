@@ -18,18 +18,20 @@ def lam_valid(c, t0, r, status=False):
     form stays bounded from below, on the grid SC. Failed candidates return log10(last good scale) minus a penalty so the
     local search sees a gradient. Fails closed: an integration that stops without a perturbativity event, returns nothing
     or produces non-finite couplings scores the last good scale (never the endpoint); status=True also returns the reason.
-    This is a discovery heuristic; benchmark claims use gate2/bench.trajectory (fine grid, bracketing, endpoint check)."""
+    This is a discovery heuristic (decade-spaced BFB/unitarity samples, so a crossing between samples is seen only at the next one; the running top Yukawas y_t and rho_t = r y_t are tested by a terminal event, 'yukawa'); benchmark claims use gate2/bench.trajectory (fine grid, bracketing, endpoint check) and the verified fine-grid certification."""
     def ret(v, why): return (v, why) if status else v
     if not np.all(np.isfinite(c)): return ret(-99.0, 'nonfinite')
     um = vac.unit_max(c)
     if um > 8*np.pi: return ret(np.log10(np.exp(t0)) - 1.0 - (um - 8*np.pi)/8, 'unitarity@start')
     v0 = bfb2.min_vred(c, refine=2)
     if v0 < 0: return ret(np.log10(np.exp(t0)) + max(5*v0, -3.0) - 1.0, 'BFB@start')
+    if abs(r)*0.88 > np.sqrt(4*np.pi): return ret(np.log10(np.exp(t0)) - 1.0, 'yukawa@start')           # rho_t = r y_t(mu_0) already non-perturbative at the boundary
     t1 = np.log(1e16); ts = SC[SC > t0]
     s = rgfast2.run(c, t0, t1=t1, cmax=CM, scales=ts if len(ts) else None, r=r)
-    ev = s.t_events[0] if s.t_events is not None else []
+    evs = [e_ for e_ in (s.t_events or [])]; ev = evs[0] if len(evs) > 0 else []; evy = evs[1] if len(evs) > 1 else []
     if s.status == -1: lim, why = None, 'integration'
-    elif len(ev): lim, why = ev[0], 'perturbativity'
+    elif len(ev) or len(evy):
+        lim, why = (ev[0], 'perturbativity') if (len(ev) and (not len(evy) or ev[0] <= evy[0])) else (evy[0], 'yukawa')
     elif s.status == 0: lim, why = t1, 'none'
     else: lim, why = None, 'integration'
     best = t0; Y = np.asarray(s.y)

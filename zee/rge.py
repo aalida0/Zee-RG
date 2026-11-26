@@ -87,7 +87,8 @@ def rhs(t, z):
     Tk, Tck = part(b)
     dY1 = np.array([[Tck[1][EC + j, E + i] for j in range(3)] for i in range(3)])
     dY2 = np.array([[Tck[3][EC + j, E + i] for j in range(3)] for i in range(3)])
-    df = np.array([[Tk[4][NU + i, E + j] for j in range(3)] for i in range(3)])
+    G = np.array([[Tk[4][NU + i, E + j] for j in range(3)] for i in range(3)])
+    df = (G - G.T)/4           # the tensor entry is y^{nu_i e_j} = f_ij - f_ji = 2 f_ij (antisymmetric f): beta_f = antisymmetric part of G / 2 (report v11 fix; was G)
     dyt = Tk[1][TC, TL].real
     dg = g**3 * BG / (16 * np.pi**2)
     return pack(dY1, dY2, df, dyt, dg)

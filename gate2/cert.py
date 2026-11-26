@@ -22,7 +22,38 @@ def _bad(c):
     if np.abs(c).max() > 4*np.pi: return 'perturbativity'
     if vac.unit_max(c) > 8*np.pi: return 'unitarity'
     v = L._bfb(c)
-    return 'BFB' if v < bench.BFB_TOL else None
+    return 'BFB' if v < -bench.BFB_TOL else ('BFB?' if v < bench.BFB_TOL else None)       # 'BFB?': margin within the numerical tolerance of zero = unresolved, not a known crossing
+
+
+def reach_class(cs, variants):
+    """single classifier of a certified reach, shared by campaign, collector, benchmarks and the matching drivers: 'boundary_failure' (some variant violates a condition at the matching scale: no scale),
+    'unresolved' (borderline BFB margin within the numerical tolerance of zero), 'numerical_stop' (solver stop or non-finite coupling: a demonstrated PREFIX, not a first-failure scale),
+    'match_failed' (the threshold-matching root was not converged), 'ceiling' (no failure up to 1e16 GeV, right-censored) or 'physical_failure' (first crossing of BFB/unitarity/perturbativity/Yukawa
+    found by bisection).  Only the last two carry a scale; the sentinel -1 is never a scale."""
+    fl = [str(v['fail']) if v.get('fail') is not None else None for v in variants.values()]
+    if any(f is not None and f.startswith('start') for f in fl): return 'boundary_failure'
+    if any(f == 'match_failed' for f in fl): return 'match_failed'
+    if any(f in ('integration', 'nonfinite') for f in fl) or cs is None or not np.isfinite(cs): return 'numerical_stop'
+    if any(f == 'BFB?' for f in fl): return 'unresolved'
+    if all(f is None for f in fl): return 'ceiling'
+    return 'physical_failure'
+
+
+def status_fields(cs, rc, logL, base):
+    """(rg_status, baseline, meets_requested_cutoff, final_status) of a campaign record from the certified minimum cs, its reach class rc, the requested cutoff logL and the low-energy status base.
+    logL < 0 is the low-energy baseline with the nominal boundary only: no cutoff comparison is made (the start-failure sentinel -1 is not a scale), and only a boundary failure fails it.
+    A numerical stop, borderline BFB or failed matching has no valid reach: it can never meet a cutoff, and a record that would otherwise PASS becomes UNRESOLVED."""
+    valid = rc in ('physical_failure', 'ceiling')
+    rg = 'not run' if cs is None else ('ok' if valid else ('start-fail' if rc == 'boundary_failure' else 'unresolved/' + str(rc)))
+    baseline = logL is not None and logL < 0
+    if logL is None or cs is None or baseline: meets = None
+    else: meets = bool(valid and cs >= logL)
+    if cs is None: fin = base
+    elif rc == 'boundary_failure': fin = 'FAIL'
+    elif baseline or meets is None: fin = base if valid else ('UNRESOLVED' if base == 'PASS' else base)
+    elif meets: fin = base
+    else: fin = 'FAIL' if valid else ('UNRESOLVED' if base == 'PASS' else base)
+    return rg, bool(baseline), meets, fin
 
 
 YMAX = np.sqrt(4*np.pi)

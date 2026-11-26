@@ -9,7 +9,7 @@ sys.path[:0] = [ROOT, os.path.join(ROOT, 'gate1'), os.path.join(ROOT, 'gate2')]
 os.environ.setdefault('ZEE_INPUTS', 'modern')
 from scipy.integrate import solve_ivp
 import bench, cert as CE
-from zee import rgfull as F, hgmodel as H
+from zee import rgfull as F, hgmodel as H, matching as MA, matching_full as MF
 from zee.observables import M_LEP
 V = 246.22; YMAX = np.sqrt(4*np.pi); LOG16 = np.log(1e16); YB = np.sqrt(2)*2.7/V
 
@@ -30,13 +30,19 @@ def yinit(x, sc, mode):
 def run_full(c, t0, r, g0, y0, rtol=1e-7, n_per_dec=100):
     yb, Y1, Y2, f = y0; yt = g0[3]; g = np.asarray(g0[:3], float)
     z0 = F.pack(g, yt, r*yt, yb, r*yb, Y1, Y2, f, c)
-    s = solve_ivp(F.rhs, (t0, LOG16), z0, dense_output=True, rtol=rtol, atol=rtol*1e-2)
+    ev = lambda t, z: 50.0 - np.abs(z[61:]).max(); ev.terminal = True    # stop at a quartic Landau pole (|c| = 50 >> 4 pi): the first failure is bracketed before it, nothing beyond is needed
+    s = solve_ivp(F.rhs, (t0, LOG16), z0, dense_output=True, rtol=rtol, atol=rtol*1e-2, events=ev)
     def bad(z):
         if not np.all(np.isfinite(z)): return 'nonfinite'
         why = CE._bad(z[61:])
         if why is None and F.yukawa_max(z) > YMAX: why = 'yukawa'
         return why
     grid = np.append(np.arange(t0, LOG16, np.log(10)/n_per_dec), LOG16); prev = t0
+    run_full.proj = 0.0                                                 # largest relative size of the quartic beta tensor discarded by the real 11-parameter projection
+    tg = np.linspace(t0, min(s.t[-1], LOG16), 80); RS = []
+    for t in tg:
+        rs, nrm = F.rhs(t, s.sol(t), return_resid=True); run_full.proj = max(run_full.proj, rs/max(nrm, 1e-300)); RS.append(rs)
+    run_full.accum = float(np.trapezoid(RS, tg))                           # accumulated size of the beta-function component outside the real quartic subspace (CP-odd / imaginary parts), integrated over ln mu up to the end of the integration; compare with the BFB and unitarity margins
     for t in grid:
         if t > s.t[-1] + 1e-12: return prev/np.log(10), 'integration', s
         why = bad(s.sol(t))
@@ -52,7 +58,7 @@ def run_full(c, t0, r, g0, y0, rtol=1e-7, n_per_dec=100):
     return LOG16/np.log(10), None, s
 
 
-def cert_full(x, eta, mode, variants=CE.FULL, n_per_dec=100):
+def cert_full(x, eta, mode, variants=CE.FULL, n_per_dec=100, match=None):
     sc, c = bench.coup(x, eta); r = -sc['tb']; ml = min(sc['m1'], sc['mA'], sc['mH']); t0 = np.log(ml); out = {}
     y0 = yinit(x, sc, mode)
     for p in variants:
@@ -64,9 +70,18 @@ def cert_full(x, eta, mode, variants=CE.FULL, n_per_dec=100):
         elif p.startswith('sm_'):
             kind, k = p.split('_')[1], float(p.split('_')[2]); g = np.array(bench.SM_MT, float); g[3 if kind == 'yt' else 2] *= k
             tt, cc, g0 = t0, c, bench.sm_run(max(172.5, ml), start=tuple(g))
+        mres = None
+        if match:                                                       # combined run: re-matched boundary quartics (zee/matching[_full]) AND all Yukawa couplings evolved
+            mu0 = float(np.exp(tt)); g_ = np.asarray(g0, float); scl = float(p.split('_')[1]) if p.startswith('qscale') else 1.0
+            mres = MA.match(c, sc, mu0, tuple(g_[:3]), float(g_[3]), r) if match == 'ep' else MF.match_full(c, sc, mu0, tuple(g_[:3]), float(g_[3]), r, prescription=match.split('-', 1)[1])
+            if not mres['ok'] or mres['resid'] > 1e-6 or not np.all(np.isfinite(mres['c'])):
+                out[p] = dict(log10=None, fail='match_failed', match_resid=float(mres['resid'])); continue
+            cc = mres['c']*scl
         v = run_full(cc, tt, r, np.asarray(g0, float), y0, n_per_dec=n_per_dec)
-        out[p] = dict(log10=float(v[0]), fail=v[1])
-    return min(o['log10'] for o in out.values()), out
+        out[p] = dict(log10=float(v[0]), fail=v[1], proj_resid=float(run_full.proj), proj_accum=run_full.accum)
+        if mres is not None: out[p].update(match_resid=float(mres['resid']), delta=[float(u) for u in mres['delta']])
+    vals = [o['log10'] for o in out.values() if o['log10'] is not None]
+    return (min(vals) if vals else None), out
 
 
 if __name__ == '__main__':
@@ -74,9 +89,10 @@ if __name__ == '__main__':
     inp = json.load(open(os.path.join(ROOT, 'results', 'benchmarks_input.json')))
     st = {('S%d' % i): d for i, d in enumerate(json.load(open(os.path.join(ROOT, 'results', 'campaign_starts.json'))))}
     d = inp[name] if name in inp else st[name]
-    m, out = cert_full(d['x'], d['eta'], mode, variants)
+    match = os.environ.get('ZEE_MATCH')                                   # e.g. full-hpole-sym | full-hpole-min | full-hpole-max | ep
+    m, out = cert_full(d['x'], d['eta'], mode, variants, match=match)
     outdir = os.environ.get('ZEE_OUT', os.path.join(ROOT, 'results', 'yukawa'));
     try: os.makedirs(outdir, exist_ok=True)
     except OSError: outdir = '/tmp'
-    json.dump(dict(name=name, mode=mode, min=m, variants=out), open(os.path.join(outdir, 'yukawa_%s_%s.json' % (name, mode)), 'w'), indent=1)
-    print(name, mode, 'min %.2f' % m, {k: (round(v['log10'], 2), v['fail']) for k, v in out.items()})
+    json.dump(dict(name=name, mode=mode, match=match, min=m, variants=out), open(os.path.join(outdir, 'yukawa_%s_%s%s.json' % (name, mode, ('_' + match) if match else '')), 'w'), indent=1)
+    print(name, mode, match, 'min', m, {k: (round(v['log10'], 2), v['fail']) for k, v in out.items()})

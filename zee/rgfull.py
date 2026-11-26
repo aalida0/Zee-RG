@@ -77,14 +77,15 @@ def rhs(t, z, return_resid=False):
         re, im = bY[2*k], bY[2*k + 1]; Tk[k] = (re - 1j*im)/np.sqrt(2); Tck[k] = (re + 1j*im)/np.sqrt(2)
     dY1 = np.array([[Tck[1][EC + j, E + i] for j in range(3)] for i in range(3)])
     dY2 = np.array([[Tck[3][EC + j, E + i] for j in range(3)] for i in range(3)])
-    df = np.array([[Tk[4][NU + i, E + j] for j in range(3)] for i in range(3)])
+    G = np.array([[Tk[4][NU + i, E + j] for j in range(3)] for i in range(3)])
+    df = (G - G.T)/4           # the tensor entry is y^{nu_i e_j} = f_ij - f_ji = 2 f_ij (antisymmetric f): beta_f = antisymmetric part of G / 2 (report v11 fix; was G)
     dyt = Tk[1][TC, TL].real; drt = Tk[3][TC, TL].real
     dyb = Tck[1][BC, BL].real; drb = Tck[3][BC, BL].real
     Ts, M, pinv = _quartic_basis()
     lam = sum(ci*Ti for ci, Ti in zip(c, Ts))
     dq = rgeq.quartic_beta(lam, Y, g)
     dc = pinv @ dq.ravel()
-    if return_resid: return np.abs(M @ dc - dq.ravel()).max()
+    if return_resid: return np.abs(M @ dc - dq.ravel()).max(), np.abs(dq).max()         # (discarded part of the quartic beta tensor, its overall size)
     dg = g**3*BG/(16*np.pi**2)
     return pack(dg, dyt, drt, dyb, drb, dY1, dY2, df, dc)
 

@@ -36,14 +36,8 @@ def rhat(chains):
 
 
 def reach_class(cs, variants):
-    """classify a stored/verified reach: 'boundary_failure' (some variant violates a condition at the matching scale: no scale), 'numerical_stop' (solver stop or
-    non-finite coupling: a demonstrated PREFIX, not a first-failure scale), 'ceiling' (no failure up to 1e16 GeV), 'physical_failure' (first crossing of BFB/unitarity/perturbativity
-    found by bisection).  Only the last two are plotted on a scale axis; the sentinel -1 is never a scale."""
-    fl = [str(v['fail']) if v['fail'] is not None else None for v in variants.values()]
-    if any(f is not None and f.startswith('start') for f in fl): return 'boundary_failure'
-    if any(f in ('integration', 'nonfinite') for f in fl): return 'numerical_stop'
-    if all(f is None for f in fl): return 'ceiling'
-    return 'physical_failure'
+    import cert as CE                           # shared classifier (gate2/cert.py), imported lazily to keep the collector light
+    return CE.reach_class(cs, variants)
 
 
 CATS = ((-1.5, -0.5, 'C7', 'logL=-1: nominal-boundary baseline (low-energy fit + nominal BFB/unitarity at the matching scale)'),
@@ -117,6 +111,64 @@ def make_verified_plot(verified, outdir):
         a.scatter([v['screen13'] for v in good], np.log10([max(v['obs'][k], 1e-30) for v in good]), s=8, c=[v['logL'] for v in good], cmap='viridis'); a.axhline(np.log10(lim), c='gray', ls='--', lw=0.8)
         a.set_xlabel(r'screening reach $\log_{10}\Lambda$ (10/decade, 13 variants)'); a.set_ylabel(r'$\log_{10}$ ' + k)
     fig.suptitle('re-verified points: full low-energy gate, 13-variant SCREENING reach (final scales come from benchmarks.py)', fontsize=7); fig.tight_layout(); fig.savefig(os.path.join(outdir, 'verified_lfv_cutoff.pdf')); plt.close(fig)
+
+
+def exact_key(p):
+    """identity of a candidate = its complete 25-vector (x AND eta) as exact floats: two candidates with the same low-energy coordinates and different scalar completions are different potentials"""
+    return tuple(np.asarray(p['x'], float).tolist()) + tuple(np.asarray(p['eta'], float).tolist())
+
+
+def dedup_group(L_, key):
+    """L_ = [(point, logL, provenance)] collected from several jobs of one group -> distinct points (full vector) sorted by the rate `key`, each with ALL provenances.  The truncation to the top-K is
+    applied AFTER this merge, so that copies of one benchmark found by several maximisers cannot fill the verification slots."""
+    d = {}
+    for b, lg, pv in L_:
+        e = d.setdefault(exact_key(b), [b, lg, []]); e[2].append(pv)
+    return sorted(d.values(), key=lambda t: -t[0]['obs'][key])
+
+
+def pareto_front(rows, keys):
+    """indices of the non-dominated rows (all `keys` maximised); rows are dicts"""
+    idx = []
+    for i, r in enumerate(rows):
+        dom = any(all(q[k] >= r[k] for k in keys) and any(q[k] > r[k] for k in keys) for j, q in enumerate(rows) if j != i)
+        if not dom: idx.append(i)
+    return idx
+
+
+def matched_proxy(x, eta, modes=('full-sym', 'full-max', 'full-hpole-sym')):
+    """cheap robustness proxy for retention (report v11 / referee plan 4.2): the conservative boundedness margin min(V_red, lambda_h) of the momentum-dependent MATCHED boundary quartics at the default boundary,
+    for the mixing prescriptions that moved BM2 across the boundary (heavy/symmetric momentum for the h-H element) and for the h-pole one.  A failed or non-converged matching counts as a failure
+    (margin -1): such a point is never retained as robust.  A proxy, not a validation: the full-variant validation is gate2/validate_finalist.py."""
+    import bench, matched_scales as MS
+    try: sc, c = bench.coup(np.asarray(x, float), np.asarray(eta, float)); r = -sc['tb']; ml = min(sc['m1'], sc['mA'], sc['mH'])
+    except Exception: return dict(rmargin=-1.0, per_mode={m_: -1.0 for m_ in modes})       # fail closed
+    out = {}
+    for mode in modes:
+        try:
+            m = MS.do_match(c, sc, x, eta, ml, MS.G0, r, mode, 1.0)
+            if MS.match_valid(m) is not None: out[mode] = -1.0; continue
+            out[mode] = float(min(bench.margins(m['c'])[0], m['c'][10]))
+        except Exception: out[mode] = -1.0
+    return dict(rmargin=min(out.values()), per_mode=out)
+
+
+def portfolio(good, obs_names, per_obs=15, nbins=4):
+    """candidate portfolio of the report-v11 selection (P3): for each observable the Pareto set of (rate, verified screening reach, conservative BFB margin) of the distinct valid points, completed to
+    `per_obs` by diversity in the margin (equal-count bins of the margin, best rate in each) so that points with a comfortable margin are carried even if they are not record-breaking.
+    `good` = {key: raw} with raw['obs'], raw['cs'], raw['margin']"""
+    out = {}
+    for o in obs_names:
+        rows = [dict(k=k, rate=r['obs'][o], cs=r['cs'], margin=r.get('margin', 0.0)) for k, r in good.items() if r['obs'].get(o) is not None]
+        if not rows: continue
+        sel = [rows[i]['k'] for i in pareto_front(rows, ('rate', 'cs', 'margin'))][:per_obs]
+        rest = sorted([r for r in rows if r['k'] not in sel], key=lambda r: r['margin'])
+        if rest and len(sel) < per_obs:
+            bins = np.array_split(np.arange(len(rest)), nbins)
+            for b in reversed(bins):
+                if len(b) and len(sel) < per_obs: sel.append(max((rest[i] for i in b), key=lambda r: r['rate'])['k'])
+        out[o] = sel[:per_obs]
+    return out
 
 
 def main():
@@ -205,7 +257,7 @@ def main():
         res['basins']['logL=%g|start=%d' % (L_, st)] = d
     # verification
     import accept as AC, cert as CE
-    key_of = lambda p: tuple(np.round(np.asarray(p['x'], float), 12)) + tuple(np.round(np.asarray(p['eta'], float), 12))
+    key_of = exact_key
     cache = {}                                            # one verification per distinct input (exact full parameter vector); group/cutoff memberships are kept separately
 
     def raw_verify(p):
@@ -213,7 +265,10 @@ def main():
         if k not in cache:
             x, eta = np.array(p['x']), np.array(p['eta'])
             r = AC.accept(x, eta, cmin, logL=None, collider=True, n_vac=200); cs, cd = CE.cert(x, eta, CE.FULL); rc = reach_class(cs, cd)
-            cache[k] = dict(status=r['status'], failed=r.get('failed_cuts'), nominal_pass=(r['status'] == 'PASS'), reach_class=rc, chi2=r['chi2'],
+            import bench as _B
+            try: _c = _B.coup(x, eta)[1]; _vb = float(_B.margins(_c)[0]); _lh = float(_c[10])
+            except Exception: _vb = _lh = -1.0                       # margin not computable: ranked last (never a robust witness)
+            cache[k] = dict(margin=min(_vb, _lh), vred_margin=_vb, lam_h=_lh, status=r['status'], failed=r.get('failed_cuts'), nominal_pass=(r['status'] == 'PASS'), reach_class=rc, chi2=r['chi2'],
                             reach_valid=bool(np.isfinite(cs) and cs > 0 and rc in ('physical_failure', 'ceiling')), cs=float(cs), x=list(map(float, x)), eta=list(map(float, eta)),
                             numerical_stops=sorted({v['fail'] for v in cd.values() if v['fail'] in ('integration', 'nonfinite')}),
                             obs={**{kk: r['obs'][kk] for kk in ('mu_e_g', 'tau_mu_g', 'tau_e_g')}, 'h_tau_mu': r.get('collider', {}).get('BR_h_tau_mu', r['obs']['h_tau_mu'])})
@@ -236,8 +291,10 @@ def main():
                 if key_of(b) not in seen_g: seen_g.add(key_of(b)); members[grp].append((b, j['logL'], prov))       # deduplicate within a job only
         if j.get('best_unresolved'): res.setdefault('unresolved_bests', []).append(dict(group=grp, obs=j['best_unresolved']['obs']))
     for k, L_ in members.items():
-        key = k.split('|')[0].split(':')[1]
-        for b, lg, pv in sorted(L_, key=lambda t: -t[0]['obs'][key])[:TOPK*3]: res['verified'].append(member(raw_verify(b), k, lg, pv))
+        key = k.split('|')[0].split(':')[1]; npass = 0
+        for n_, (b, lg, pvs) in enumerate(dedup_group(L_, key)):       # distinct full vectors only; keep verifying beyond TOPK until TOPK distinct passing witnesses are found or the (capped) list is exhausted
+            if n_ >= TOPK*6 or (n_ >= TOPK*3 and npass >= TOPK): break
+            m_ = member(raw_verify(b), k, lg, pvs[0]); m_['all_provenance'] = pvs; res['verified'].append(m_); npass += bool(m_['meets_cutoff'])
     pool = {}                                             # distinct visited states of the sample chains: all memberships (logL of every chain that visited them) are retained
     for j in J:
         if j['mode'] != 'sample': continue
@@ -246,6 +303,9 @@ def main():
     chosen = {}                                           # purposeful extremes: best rate per observable among gate-passing stored states, highest screening reach, plus random representatives
     for obs_ in ('mu_e_g', 'tau_mu_g', 'tau_e_g', 'h_tau_mu'):
         for p, ls in sorted([t for t in states if t[0].get('final_status') == 'PASS'], key=lambda t: -t[0]['obs'][obs_])[:5]: chosen[key_of(p)] = (p, ls, 'sample-extreme:' + obs_)
+    for lg_ in sorted({l_ for _, ls in states for l_ in ls}):         # per requested cutoff, not only global extremes
+        for obs_ in ('mu_e_g', 'tau_mu_g', 'tau_e_g', 'h_tau_mu'):
+            for p, ls in sorted([t for t in states if lg_ in t[1] and t[0].get('final_status') == 'PASS'], key=lambda t: -t[0]['obs'][obs_])[:2]: chosen.setdefault(key_of(p), (p, ls, 'sample-extreme:%s@%g' % (obs_, lg_)))
     for p, ls in sorted([t for t in states if t[0].get('cert')], key=lambda t: -t[0]['cert']['min'])[:5]: chosen.setdefault(key_of(p), (p, ls, 'sample-extreme:reach'))
     for i in (rng.choice(len(states), size=min(NS, len(states)), replace=False) if states else []): chosen.setdefault(key_of(states[i][0]), (states[i][0], states[i][1], 'sample-random'))
     for p, ls, why in chosen.values():
@@ -258,15 +318,33 @@ def main():
     fin_raw = sorted(good.values(), key=lambda v: -v['cs'])[:max(NF//2, 1)]      # highest demonstrated (screening) scales ...
     fin = [dict(x=v['x'], eta=v['eta'], obs=v['obs'], logL=None, group='top-reach', provenance=None) for v in fin_raw]
     pm = collections.defaultdict(list)
-    for v in res['verified']: pm[tuple(np.round(v['x'], 12))].append(v)
+    for v in res['verified']: pm[exact_key(v)].append(v)
     for obs_ in ('mu_e_g', 'tau_mu_g', 'tau_e_g', 'h_tau_mu'):     # ... the best verified witness of each observable, and of each observable at EACH requested cutoff (Pareto witnesses)
         for lg in sorted({v['logL'] for v in res['verified'] if v['logL'] > 0}) + [None]:
             w = sorted([r for r in good.values() if r['obs'][obs_] is not None and (lg is None or r['cs'] >= lg)], key=lambda r: -r['obs'][obs_])[:1]
-            fin += [dict(x=r['x'], eta=r['eta'], obs=r['obs'], logL=lg, group='best-%s@%s' % (obs_, lg), provenance=[m['provenance'] for m in pm.get(tuple(np.round(r['x'], 12)), [])][:4]) for r in w]
-    seen_f = set(); fin = [f for f in fin if not (tuple(np.round(f['x'], 12)) in seen_f or seen_f.add(tuple(np.round(f['x'], 12))))]
+            fin += [dict(x=r['x'], eta=r['eta'], obs=r['obs'], logL=lg, group='best-%s@%s' % (obs_, lg), provenance=[m['provenance'] for m in pm.get(exact_key(r), [])]) for r in w]
+    port = portfolio(good, ('mu_e_g', 'tau_mu_g', 'tau_e_g', 'h_tau_mu'))                 # Pareto/diversity portfolio per observable (rate, verified reach, conservative BFB margin)
+    for o_, ks in port.items():
+        for k_ in ks: fin.append(dict(x=good[k_]['x'], eta=good[k_]['eta'], obs=good[k_]['obs'], logL=None, group='portfolio-%s' % o_, provenance=[m['provenance'] for m in pm.get(k_, [])]))
+    if int(os.environ.get('COLLECT_MATCHED', '1')):         # robustness-aware retention: matched-boundary margin proxy for the candidates already selected, then the best robust witnesses per observable
+        cand = {}
+        for ks in port.values():
+            for k_ in ks: cand[k_] = good[k_]
+        for f_ in fin: cand.setdefault(exact_key(f_), good.get(exact_key(f_)))
+        cand = {k_: v for k_, v in cand.items() if v is not None}
+        for k_ in list(cand)[:int(os.environ.get('NMATCH_MAX', '80'))]: cand[k_]['robust'] = matched_proxy(cand[k_]['x'], cand[k_]['eta'])
+        for o_ in ('mu_e_g', 'tau_mu_g', 'tau_e_g', 'h_tau_mu'):
+            rob = sorted([v for v in cand.values() if v.get('robust', {}).get('rmargin', -1) > 0 and v['obs'][o_] is not None], key=lambda v: -v['obs'][o_])[:3]
+            fin += [dict(x=v['x'], eta=v['eta'], obs=v['obs'], logL=None, group='robust-%s' % o_, provenance=[m['provenance'] for m in pm.get(exact_key(v), [])]) for v in rob]
+        res['robust_retention'] = dict(n_evaluated=sum('robust' in v for v in cand.values()), n_robust=sum(v.get('robust', {}).get('rmargin', -1) > 0 for v in cand.values()),
+                                       rmargins=sorted([v['robust']['rmargin'] for v in cand.values() if 'robust' in v]))
+    res['portfolio'] = {o_: [dict(rate=good[k_]['obs'][o_], reach=good[k_]['cs'], margin=good[k_]['margin'], lam_h=good[k_]['lam_h']) for k_ in ks] for o_, ks in port.items()}
+    mem = collections.defaultdict(list)                   # deduplicate by the full vector but keep every group membership
+    for f in fin: mem[exact_key(f)].append(f['group'])
+    seen_f = set(); fin = [dict(f, groups=mem[exact_key(f)]) for f in fin if not (exact_key(f) in seen_f or seen_f.add(exact_key(f)))]
     from campaign import clean
     json.dump(clean(res), open(os.path.join(OUT, 'campaign_summary.json'), 'w'), indent=1, allow_nan=False)
-    json.dump({'C%d' % i: dict(x=v['x'], eta=v['eta'], origin='campaign ' + v['group'], provenance=v.get('provenance')) for i, v in enumerate(fin)}, open(os.path.join(OUT, 'campaign_finalists.json'), 'w'), indent=1)
+    json.dump({'C%d' % i: dict(x=v['x'], eta=v['eta'], origin='campaign ' + ', '.join(v.get('groups') or [v['group']]), provenance=v.get('provenance')) for i, v in enumerate(fin)}, open(os.path.join(OUT, 'campaign_finalists.json'), 'w'), indent=1)
     if os.environ.get('PLOTDIR'): make_verified_plot(res['verified'], os.environ['PLOTDIR'])
     print(json.dumps(res['groups'], indent=0)[:1500]); print('verified', res['n_verified'], 'meet cutoff', res['n_pass'], 'finalists', len(fin))
 

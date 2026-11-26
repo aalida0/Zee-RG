@@ -1,59 +1,86 @@
 {
  "name": "BM2",
  "mode": "all",
+ "match": null,
  "min": 12.064395625309205,
  "variants": {
   "default": {
    "log10": 13.511781488374915,
-   "fail": "unitarity"
+   "fail": "unitarity",
+   "proj_resid": 4.9717507731806895e-06,
+   "proj_accum": 1.9535558366387908e-05
   },
   "match_x0.5": {
    "log10": 13.2846630677899,
-   "fail": "unitarity"
+   "fail": "unitarity",
+   "proj_resid": 5.171025717197203e-06,
+   "proj_accum": 1.886118615892408e-05
   },
   "match_x1": {
    "log10": 13.52624092669889,
-   "fail": "unitarity"
+   "fail": "unitarity",
+   "proj_resid": 4.998128616189206e-06,
+   "proj_accum": 1.9388217450804184e-05
   },
   "match_x2": {
    "log10": 13.708886317312789,
-   "fail": "unitarity"
+   "fail": "unitarity",
+   "proj_resid": 4.859065975067689e-06,
+   "proj_accum": 2.037261405491039e-05
   },
   "matchH_x0.5": {
    "log10": 13.444510958045237,
-   "fail": "unitarity"
+   "fail": "unitarity",
+   "proj_resid": 5.054827938549243e-06,
+   "proj_accum": 1.9170267136469925e-05
   },
   "matchH_x1": {
    "log10": 13.655061043633552,
-   "fail": "unitarity"
+   "fail": "unitarity",
+   "proj_resid": 4.905053754678424e-06,
+   "proj_accum": 1.9937533401572568e-05
   },
   "matchH_x2": {
    "log10": 13.778186628041226,
-   "fail": "unitarity"
+   "fail": "unitarity",
+   "proj_resid": 4.7827449652206024e-06,
+   "proj_accum": 1.8954507794093014e-05
   },
   "qscale_1.1": {
    "log10": 12.064395625309205,
-   "fail": "unitarity"
+   "fail": "unitarity",
+   "proj_resid": 4.302043328312235e-06,
+   "proj_accum": 1.928670186833244e-05
   },
   "qscale_0.9": {
    "log10": 15.173864856378282,
-   "fail": "unitarity"
+   "fail": "unitarity",
+   "proj_resid": 5.728315870583704e-06,
+   "proj_accum": 1.8583071279559025e-05
   },
   "sm_yt_1.02": {
    "log10": 13.55288489253923,
-   "fail": "unitarity"
+   "fail": "unitarity",
+   "proj_resid": 5.104288091484746e-06,
+   "proj_accum": 1.906728492756076e-05
   },
   "sm_yt_0.98": {
    "log10": 13.451417067960946,
-   "fail": "unitarity"
+   "fail": "unitarity",
+   "proj_resid": 4.900688871950972e-06,
+   "proj_accum": 2.008336683676955e-05
   },
   "sm_gs_1.03": {
    "log10": 13.507320102767197,
-   "fail": "unitarity"
+   "fail": "unitarity",
+   "proj_resid": 4.976688137718362e-06,
+   "proj_accum": 1.9511375516200332e-05
   },
   "sm_gs_0.97": {
    "log10": 13.53685364277765,
-   "fail": "unitarity"
+   "fail": "unitarity",
+   "proj_resid": 5.019558075351863e-06,
+   "proj_accum": 1.932975719363713e-05
   }
  }
 }

@@ -43,4 +43,5 @@ def rhs_r(r):
     return rhs
 def run(c0, t0, t1=np.log(1e19), g=(0.36, 0.64, 1.05), yt=0.88, cmax=4*np.pi, scales=None, r=0.0):
     z0 = np.concatenate([g, [yt], c0]); ev = lambda t, z: cmax - np.abs(z[4:]).max(); ev.terminal = True
-    return solve_ivp(rhs_r(r), (t0, t1), z0, events=ev, rtol=1e-8, atol=1e-10, t_eval=scales)
+    ey = lambda t, z: np.sqrt(4*np.pi) - max(abs(z[3]), abs(r*z[3])); ey.terminal = True          # running top and second-doublet top Yukawas must stay perturbative (report v11, as in gate2/cert._ybad)
+    return solve_ivp(rhs_r(r), (t0, t1), z0, events=[ev, ey], rtol=1e-8, atol=1e-10, t_eval=scales)

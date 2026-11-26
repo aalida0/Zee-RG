@@ -92,7 +92,7 @@ def accept(x, eta, cmin, logL=None, collider=True, n_vac=80, seed=11, stop_early
     if stop_early and not all(cuts.values()): return fin()
     c = quartics(sc, eta); t0 = np.log(min(sc['m1'], sc['mA'], sc['mH']))
     Lf, why = L.lam_valid(c, t0, -sc['tb'], status=True); rec.update(Lf=float(Lf), Lf_status=why)
-    cuts['rg_start'] = why not in ('nonfinite', 'unitarity@start', 'BFB@start')
+    cuts['rg_start'] = why not in ('nonfinite', 'unitarity@start', 'BFB@start', 'yukawa@start')
     if logL is not None: cuts['cutoff'] = bool(Lf >= logL)
     g = vac.global_search(c, sc, nstart=n_vac, rng=np.random.default_rng(seed))
     rec['vacuum'] = {k: g[k] for k in ('status', 'n', 'n_conv', 'n_fail', 'deepest', 'V_EW', 'ew_grad')}

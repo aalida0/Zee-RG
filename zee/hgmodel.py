@@ -56,6 +56,8 @@ if "osc" in ING:
 if MODERN:  # 2025-26 inputs: MEG II, Belle II, ATLAS h->l tau, HFLAV 2023, KATRIN 2025, DESI DR2
     BOUNDS.update(mu_e_g=(1.5e-13, 1.645), tau_3mu=(1.9e-8, 1.645), tau_mu_g=(4.2e-8, 1.645),
                   h_tau_mu=(H_TAU_MU_LIMIT, 1.949), h_tau_e=(0.0020, 1.949), m_beta=(0.45, 1.949), sum_m=(float(_os.environ.get("ZEE_SUMM_LIMIT", 0.072)), 1.949))  # ZEE_SUMM_LIMIT: sensitivity runs, e.g. 0.0642 (DESI DR2 combination)
+    if _os.environ.get("ZEE_Z95"):   # sensitivity: replace the 95% CL half-normal factor 1.949 of the frozen fit (exact value z_0.975 = 1.95996) by the given one
+        BOUNDS.update({k: (v[0], float(_os.environ["ZEE_Z95"])) for k, v in BOUNDS.items() if v[1] == 1.949})
     # HFLAV-Tau 2023 (2411.18639; hflav-eos .../end-2023/lepton-univ.html eqs. 6-8, pure leptonic): g_tau/g_mu, g_tau/g_e, g_mu/g_e,
     # with the Table-5 correlations (+0.67, -0.41, +0.40; transcribed from a garbled page, positive-definite, near-singular since
     # g_mu/g_e = (g_tau/g_e)/(g_tau/g_mu)).  Keys: tm = A(tau->e)/A(mu->e) = g_tau/g_mu, te = A(tau->mu)/A(mu->e) = g_tau/g_e,

@@ -14,7 +14,7 @@ from scipy.optimize import root
 import itertools, os, sys
 from . import rgeq
 
-V = 246.22; MH = 125.09
+V = 246.22; MH = 125.5      # MH = the light-state mass of the model input (hgmodel.MH, HG convention); it also sets the Goldstone-log regulator X0 = kappa MH^2 of the EP matching (a regulator scale, varied through kappa)
 K16 = 1/(64*np.pi**2)
 
 

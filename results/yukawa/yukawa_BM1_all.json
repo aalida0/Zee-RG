@@ -1,59 +1,86 @@
 {
  "name": "BM1",
  "mode": "all",
+ "match": null,
  "min": 11.597789707916325,
  "variants": {
   "default": {
    "log10": 12.747653468983712,
-   "fail": "unitarity"
+   "fail": "unitarity",
+   "proj_resid": 1.0514499257304276e-06,
+   "proj_accum": 1.1149936948107452e-05
   },
   "match_x0.5": {
    "log10": 12.481817105564796,
-   "fail": "unitarity"
+   "fail": "unitarity",
+   "proj_resid": 1.040563774240855e-06,
+   "proj_accum": 1.0996347501714554e-05
   },
   "match_x1": {
    "log10": 12.776909624772609,
-   "fail": "unitarity"
+   "fail": "unitarity",
+   "proj_resid": 1.0542564323433452e-06,
+   "proj_accum": 1.1114477555450631e-05
   },
   "match_x2": {
    "log10": 13.071269581736487,
-   "fail": "unitarity"
+   "fail": "unitarity",
+   "proj_resid": 1.0639630479387632e-06,
+   "proj_accum": 1.1237393351525743e-05
   },
   "matchH_x0.5": {
    "log10": 12.63101568559089,
-   "fail": "unitarity"
+   "fail": "unitarity",
+   "proj_resid": 1.0466971501828421e-06,
+   "proj_accum": 1.1053948276176872e-05
   },
   "matchH_x1": {
    "log10": 12.925711079614167,
-   "fail": "unitarity"
+   "fail": "unitarity",
+   "proj_resid": 1.0594627184059e-06,
+   "proj_accum": 1.1173900918325334e-05
   },
   "matchH_x2": {
    "log10": 13.219779200316298,
-   "fail": "unitarity"
+   "fail": "unitarity",
+   "proj_resid": 1.0684089343838502e-06,
+   "proj_accum": 1.1303266907806292e-05
   },
   "qscale_1.1": {
    "log10": 11.597789707916325,
-   "fail": "unitarity"
+   "fail": "unitarity",
+   "proj_resid": 9.604732004885086e-07,
+   "proj_accum": 1.1266217868897487e-05
   },
   "qscale_0.9": {
    "log10": 14.200346831219733,
-   "fail": "unitarity"
+   "fail": "unitarity",
+   "proj_resid": 1.1500346060820019e-06,
+   "proj_accum": 1.102828687369081e-05
   },
   "sm_yt_1.02": {
    "log10": 12.748804006414952,
-   "fail": "unitarity"
+   "fail": "unitarity",
+   "proj_resid": 1.0463917404660252e-06,
+   "proj_accum": 1.1041165609656788e-05
   },
   "sm_yt_0.98": {
    "log10": 12.803788995283188,
-   "fail": "unitarity"
+   "fail": "unitarity",
+   "proj_resid": 1.0581823785185238e-06,
+   "proj_accum": 1.1191159235164024e-05
   },
   "sm_gs_1.03": {
    "log10": 12.800736722486556,
-   "fail": "unitarity"
+   "fail": "unitarity",
+   "proj_resid": 1.0564988768721258e-06,
+   "proj_accum": 1.1117327093073825e-05
   },
   "sm_gs_0.97": {
    "log10": 12.75213967336947,
-   "fail": "unitarity"
+   "fail": "unitarity",
+   "proj_resid": 1.0518526550098132e-06,
+   "proj_accum": 1.111080013932027e-05
   }
  }
 }

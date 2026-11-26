@@ -146,13 +146,13 @@ def stage_gate(x, eta, logL, t=None, rescaled=True):
             return False, info, 'higgs'
     c = AC.quartics(sc, eta); t0 = np.log(min(sc['m1'], sc['mA'], sc['mH']))
     Lf, why = L.lam_valid(c, t0, -sc['tb'], status=True); info['Lf'] = float(Lf); info['Lf_status'] = why
-    if why in ('nonfinite', 'unitarity@start', 'BFB@start'): return False, info, 'rg_start'
+    if why in ('nonfinite', 'unitarity@start', 'BFB@start', 'yukawa@start'): return False, info, 'rg_start'
     if not (Lf >= logL): return False, info, 'cutoff'
     # prefilter against the certification variants that move the reach most: boundary quartics x1.1 and x0.9 (coarse grid, ~0.05 s each)
     for kq in ((1.1, 0.9) if rescaled else ()):
         Lk, whyk = L.lam_valid(c * kq, t0, -sc['tb'], status=True)
         info['Lf_q%.1f' % kq] = float(Lk)
-        if whyk in ('nonfinite', 'unitarity@start', 'BFB@start') or not (Lk >= logL): return False, info, 'cutoff'
+        if whyk in ('nonfinite', 'unitarity@start', 'BFB@start', 'yukawa@start') or not (Lk >= logL): return False, info, 'cutoff'
     info['Lmin'] = float(coarse_reach(info))
     return True, info, 'ok'
 
@@ -176,13 +176,11 @@ def full_record(x, eta, info, seed, logL=None, cs=None, cd=None):
     if 'col' in info:
         rec['col'] = dict(HB=bool(info['col']['HB_allowed']), HS=float(info['col']['HS_chi2']), h_tau_mu=float(info['col']['BR_h_tau_mu']))
         obs['h_tau_mu'] = float(info['col']['BR_h_tau_mu'])               # canonical value (model total width) used for objective, ranking, claims
-    if cs is not None: rec['cert'] = dict(min=float(cs), variants=cd)
-    rec['rg_status'] = 'ok' if (cs is not None and cs > 0) else ('start-fail/unresolved' if cs is not None else 'not run')
-    rec['cutoff_requested'] = logL
-    rec['meets_requested_cutoff'] = None if (logL is None or cs is None) else bool(cs >= logL)
+    rc = CE.reach_class(cs, cd) if cs is not None else None            # the shared classifier (gate2/cert.py): a numerical stop, a borderline BFB margin or a failed matching never counts as a valid reach
+    if cs is not None: rec['cert'] = dict(min=float(cs), variants=cd, reach_class=rc)
     base = 'PASS' if (g['status'] == 'ok' and 'col' in info) else ('UNRESOLVED' if g['status'] == 'ok' else 'FAIL')
-    rec['status'] = base
-    rec['final_status'] = 'FAIL' if rec['meets_requested_cutoff'] is False else base
+    rec['rg_status'], rec['baseline'], rec['meets_requested_cutoff'], rec['final_status'] = CE.status_fields(cs, rc, logL, base)
+    rec['cutoff_requested'] = logL; rec['status'] = base
     return rec
 
 
