@@ -27,11 +27,12 @@ request_disk = 2GB
 """
 NST = 5                                           # results/campaign_starts.json: BM1, BM2 and three further starts passing the staged gate
 # Coarse reach scores of the five starts (campaign.coarse_reach with the rescaled boundaries, 2026-11-26): 10.75, 12.51, 6.75, 11.48, 11.77.
-# Pilot 1: start 2 cannot climb to logL 10 in the burn-in (sample and maximiser chains identical, no stored point); start 4 stalls at logL 12 (82 accepted moves);
-# no start climbs to logL 14 (69, 18, 18, 18, 82 accepted moves).  Those pairs get probe quotas only; the freed chains go to the productive pairs.
+# Pilot 1+2: start 2 cannot climb to logL 8 or 10 (sample and maximiser chains identical, ~1400 climbing moves, no stored point); start 4 stalls at logL 12 (82 accepted moves);
+# no start climbs to logL 14 (starts 0, 1, 3, 4: 69, 18, 12, 82 accepted moves); start 3 DOES work at logL 12 (pilot 2: 40 stored points, post-burn acceptance 0.26).
+# Dead pairs get probe quotas only (or none); the freed chains go to the productive pairs.
 SAMPLE_SEEDS = {-1: (26, 26, 26, 26, 26), 0: (26, 26, 26, 26, 26), 6: (26, 26, 26, 26, 26),            # seeds per start 0..4
-                8: (36, 36, 6, 36, 36), 10: (44, 44, 3, 44, 44), 12: (70, 70, 0, 8, 3)}
-MAX_SEEDS = {8: (24, 24, 4, 24, 24), 10: (38, 38, 2, 38, 38), 12: (50, 50, 0, 8, 3), 14: (2, 2, 0, 2, 0)}  # per observable; margin 1 only for the productive pairs at logL <= 10
+                8: (36, 36, 2, 36, 36), 10: (46, 46, 0, 46, 46), 12: (70, 70, 0, 40, 3)}
+MAX_SEEDS = {8: (22, 22, 2, 22, 22), 10: (36, 36, 0, 36, 36), 12: (46, 46, 0, 30, 3), 14: (0, 2, 0, 0, 0)}  # per observable; margin 1 only for the productive pairs at logL <= 10
 MARGIN1 = {8: (0, 1, 3, 4), 10: (0, 1, 3, 4)}                                                          # (logL: starts whose chains may use walk margin 1; half of their seeds do)
 jobs = []      # (mode, logL, seed, start, margin); margin = walk prefilter logL + margin of the maximiser (0: the requested cutoff itself)
 if KIND == 'full':
