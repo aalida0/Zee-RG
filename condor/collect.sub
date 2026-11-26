@@ -1,0 +1,12 @@
+universe = vanilla
+executable = collect_job.sh
+arguments = prod1
+output = $ENV(HOME)/zee_env/logs/collect_prod1.out
+error = $ENV(HOME)/zee_env/logs/collect_prod1.err
+log = $ENV(HOME)/zee_env/logs/collect_prod1.log
+should_transfer_files = YES
+when_to_transfer_output = ON_EXIT
+request_cpus = 4
+request_memory = 8GB
+request_disk = 4GB
+queue
