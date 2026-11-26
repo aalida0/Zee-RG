@@ -45,5 +45,12 @@ def _aux(kind, r, key):
     except (OSError, KeyError): return 'n/a'
 row('\\quad with all Yukawa couplings evolved', lambda r: _aux('yukawa', r, 'min'))
 row('\\quad with one-loop (effective-potential) matching', lambda r: _aux('matching', r, 'min'))
+def _full(r):
+    """range of the minimum scale over the three charged-pair prescriptions of the full (momentum-dependent) matching with the h-pole prescription for the CP-even mixing"""
+    names = {id(v): k for k, v in B.items() if isinstance(v, dict) and 'robustness' in v}; nm = names[id(r)]
+    try: m = [json.load(open(os.path.join(ROOT, 'results', 'matching', 'matching_%s_full-hpole-%s.json' % (nm, k))))['min'] for k in ('sym', 'min', 'max')]
+    except (OSError, KeyError): return 'n/a'
+    return '%.1f--%.1f' % (min(m), max(m))
+row('\\quad with momentum-dependent matching ($h$ pole)', _full)
 row('first failure', lambda r: r['robustness']['default']['fail'])
 row('no deeper minimum found (1500 starts)', lambda r: 'EW' if r['robustness']['vacuum']['global_ok'] else 'not established')

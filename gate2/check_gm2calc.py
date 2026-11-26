@@ -14,7 +14,7 @@ M = np.asarray(M_LEP, float); MH = 125.09
 BIN = os.environ.get('GM2CALC', '/tmp/gm2src/build/bin/gm2calc.x'); INP = os.environ.get('GM2INPUT', '/tmp/gm2src/input/example.thdm')
 
 
-def gm2calc(mHp, mH, mA, M2, zu, zd, zl, tb=1.0, loops=2, running=1, sba=1.0, l6=0.0, l7=0.0, m122=None):
+def gm2calc(mHp, mH, mA, M2, zu, zd, zl, tb=1.0, loops=2, running=1, sba=1.0, l6=0.0, l7=0.0, m122=None, dl=None):
     t = open(INP).read()
     def setl(block, idx, val):
         nonlocal t
@@ -26,6 +26,10 @@ def gm2calc(mHp, mH, mA, M2, zu, zd, zl, tb=1.0, loops=2, running=1, sba=1.0, l6
     for i, v in ((25, MH), (35, mH), (36, mA), (37, mHp)):
         setl('MASS', i, v)
     setl('GM2CalcConfig', 1, loops); setl('GM2CalcConfig', 6, running)
+    if dl is not None:                       # real lepton-flavour matrix Delta_l (aligned type 5: rho_l = sqrt2 m zeta_l/v + Delta_l), 1-based "i j value" entries
+        m = re.search(r'(Block GM2CalcTHDMDeltalInput\b.*?\n)(.*?)(?=\nBlock |\Z)', t, re.S)
+        body = ['    %d %d   %.12g   # Re(Deltal(%d,%d))' % (i + 1, j + 1, float(dl[i][j]), i + 1, j + 1) for i in range(3) for j in range(3)]
+        t = t[:m.start(2)] + '\n'.join(body) + t[m.end(2):]
     open('/tmp/_gm2.thdm', 'w').write(t)
     o = subprocess.run([BIN, '--thdm-input-file=/tmp/_gm2.thdm'], capture_output=True, text=True).stdout
     return float(re.search(r'^\s*0\s+(\S+)\s+# Delta', o, re.M).group(1))
@@ -50,7 +54,7 @@ def code(mHp, mH, mA, M2, zu, zd, zl, hw):
 GM2V = 242.18397      # GM2Calc's v (running couplings scheme, SM inputs of the example file), read from the lambda printer below
 
 
-def offalign(mHp, mH, mA, sba, l6, l7, tb, m122, zu, zl, hw=1.0):
+def offalign(mHp, mH, mA, sba, l6, l7, tb, m122, zu, zl, hw=1.0, dl=None, transpose=False):
     """Away from alignment (c_{b-a} != 0): lambda_1..5 of the Z2-basis potential are solved from the spectrum (gate2/thdm_basis.py, which reproduces GM2Calc's own lambdas
     to 1e-9 for the same inputs), rotated to the Higgs basis (Z3, Z7 fitted from the quartic form), and fed to the code with the neutral couplings
     h: s_ba m/v + c_ba Dd/sqrt2, H: c_ba m/v - s_ba Dd/sqrt2, A: i Dd/sqrt2 and the quark couplings h: (s_ba + c_ba zeta), H: (c_ba - s_ba zeta), A: -zeta_u / +zeta_d.
@@ -66,6 +70,7 @@ def offalign(mHp, mH, mA, sba, l6, l7, tb, m122, zu, zl, hw=1.0):
     D.V = GM2V; D.quark_couplings = quarks; D.HW_SCALE = hw
     try:
         Dd = np.diag(np.sqrt(2) * M * zl / GM2V).astype(complex); Zm = np.zeros((3, 3), complex)
+        if dl is not None: Dd = Dd + (np.asarray(dl, float).T if transpose else np.asarray(dl, float)).astype(complex)
         sc = dict(phi=0.0, m1=mHp, m2=2e3, sba=sb, cba=cb, tb=-zu, zu=zu, zd=zu, lam3=Z[2], mu=0.0)
         Lam = {'h': sb*np.diag(M/GM2V).astype(complex) + cb*Dd/np.sqrt(2), 'H': cb*np.diag(M/GM2V).astype(complex) - sb*Dd/np.sqrt(2), 'A': 1j*Dd/np.sqrt(2)}
         tri = D.charged_trilinears(sc, l7=Z[6])
@@ -89,6 +94,25 @@ def offalign_scan():
     json.dump(dict(rows=rows, v_gm2calc=GM2V, note='aligned type-5 THDM away from alignment; diagonal Delta a_mu only; code run with v = GM2Calc v'), open(os.path.join(os.path.dirname(__file__), '..', 'results', 'gm2calc_check_offalign.json'), 'w'), indent=1)
 
 
+def offdiag():
+    """flavour-off-diagonal lepton couplings (report v11): GM2Calc's aligned type with a real flavour matrix Delta_l (rho_l = sqrt2 m zeta_l/v + Delta_l) vs the code's amplitude matrices fed with the same
+    Dd.  GM2Calc returns only the flavour-diagonal a_mu, which probes the off-diagonal entries through the chirally enhanced tau (and e) loops: ~ m_mu m_tau Re(D_mu_tau D_tau_mu).  Aligned and
+    off-alignment points, asymmetric (D_mu_tau != D_tau_mu) entries so that a transposition error would show.  -> results/gm2calc_check_offdiag.json"""
+    rows = []
+    for mHp, dH, dA in ((300, 30, 10), (600, 30, 10)):
+        for sba, tb, l6, l7, zu, zl in ((1.0, 1.0, 0.0, 0.0, -1, 0), (1.0, 1.0, 0.0, 0.0, -1, 30), (0.99, 1.0, 0.2, -0.1, -1, 30), (0.99, 2.0, -0.2, 0.15, -2, 20)):
+            for name, dl in (('mutau', [[0, 0, 0], [0, 0, 0.05], [0, 0.02, 0]]), ('mutau_big', [[0, 0, 0], [0, 0, 0.3], [0, 0.4, 0]]), ('emu', [[0, 0.0002, 0], [0.0008, 0, 0], [0, 0, 0]]), ('all', [[0, 0.001, 0.01], [0.002, 0, 0.1], [0.02, 0.2, 0]])):
+                M2 = mHp**2; m122 = M2*tb/(1 + tb**2)
+                g = gm2calc(mHp, mHp + dH, mHp + dA, M2, zu, zu, zl, tb=tb, sba=sba, l6=l6, l7=l7, m122=m122, dl=dl)
+                g0 = gm2calc(mHp, mHp + dH, mHp + dA, M2, zu, zu, zl, tb=tb, sba=sba, l6=l6, l7=l7, m122=m122)
+                c = offalign(mHp, mHp + dH, mHp + dA, sba, l6, l7, tb, m122, zu, zl, 1.0, dl=dl)[0]; ct = offalign(mHp, mHp + dH, mHp + dA, sba, l6, l7, tb, m122, zu, zl, 1.0, dl=dl, transpose=True)[0]
+                c0 = offalign(mHp, mHp + dH, mHp + dA, sba, l6, l7, tb, m122, zu, zl, 1.0)[0]
+                r = dict(mHp=mHp, sba=sba, tb=tb, l6=l6, l7=l7, zu=zu, zl=zl, pattern=name, gm2calc=g, gm2calc_diag_only=g0, code=c, code_transposed=ct, code_diag_only=c0,
+                         ratio=c/g, ratio_transposed=ct/g, offdiag_part_ratio=(c - c0)/(g - g0) if abs(g - g0) > 0 else None)
+                rows.append(r); print(mHp, sba, tb, zl, name, 'GM2Calc %.3e (diag-only %.3e)' % (g, g0), 'code/GM2Calc %.3f  transposed %.3f  off-diagonal part %.3f' % (r['ratio'], r['ratio_transposed'], r['offdiag_part_ratio'] if r['offdiag_part_ratio'] is not None else float('nan')), flush=True)
+    json.dump(dict(rows=rows, v_gm2calc=GM2V, note='aligned type-5 THDM, real Delta_l; diagonal Delta a_mu only; HW_SCALE=+1'), open(os.path.join(os.path.dirname(__file__), '..', 'results', 'gm2calc_check_offdiag.json'), 'w'), indent=1)
+
+
 def heavy():
     """extension to the benchmark mass range (report v10): M_H+ = 600, 800, 900, 1000 GeV with H, A at M_H+ + (20, 40) GeV, tan(beta) = 1, several couplings -> results/gm2calc_check_heavy.json"""
     rows = []
@@ -104,6 +128,7 @@ def heavy():
 if __name__ == '__main__':
     if len(sys.argv) > 1 and sys.argv[1] == 'heavy': heavy(); sys.exit()
     if len(sys.argv) > 1 and sys.argv[1] == 'offalign': offalign_scan(); sys.exit()
+    if len(sys.argv) > 1 and sys.argv[1] == 'offdiag': offdiag(); sys.exit()
     for mHp, mH, mA in [(90, 150, 170), (200, 250, 250), (300, 300, 300), (400, 420, 430)]:
         g = gm2calc(mHp, mH, mA, mHp**2, -1, -1, 30)
         print(mHp, mH, mA, 'GM2Calc %.3e' % g, ' code HW=0/+1/-1: ' + ' '.join('%.3e' % code(mHp, mH, mA, mHp**2, -1, -1, 30, h) for h in (0, 1, -1)))
