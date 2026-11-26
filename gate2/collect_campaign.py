@@ -295,10 +295,10 @@ def main():
         for n_, (b, lg, pvs) in enumerate(dedup_group(L_, key)):       # distinct full vectors only; keep verifying beyond TOPK until TOPK distinct passing witnesses are found or the (capped) list is exhausted
             if n_ >= TOPK*6 or (n_ >= TOPK*3 and npass >= TOPK): break
             m_ = member(raw_verify(b), k, lg, pvs[0]); m_['all_provenance'] = pvs; res['verified'].append(m_); npass += bool(m_['meets_cutoff'])
-    pool = {}                                             # distinct visited states of the sample chains: all memberships (logL of every chain that visited them) are retained
+    pool = {}; pool_src = {}                              # distinct visited states of the sample chains: all memberships (logL of every chain that visited them) are retained
     for j in J:
         if j['mode'] != 'sample': continue
-        for p in j['series']: pool.setdefault(key_of(p), (p, set()))[1].add(j['logL'])
+        for p in j['series']: pool.setdefault(key_of(p), (p, set()))[1].add(j['logL']); pool_src.setdefault(key_of(p), set()).add((j['start'], j['seed']))
     states = list(pool.values())
     chosen = {}                                           # purposeful extremes: best rate per observable among gate-passing stored states, highest screening reach, plus random representatives
     for obs_ in ('mu_e_g', 'tau_mu_g', 'tau_e_g', 'h_tau_mu'):
@@ -309,7 +309,7 @@ def main():
     for p, ls in sorted([t for t in states if t[0].get('cert')], key=lambda t: -t[0]['cert']['min'])[:5]: chosen.setdefault(key_of(p), (p, ls, 'sample-extreme:reach'))
     for i in (rng.choice(len(states), size=min(NS, len(states)), replace=False) if states else []): chosen.setdefault(key_of(states[i][0]), (states[i][0], states[i][1], 'sample-random'))
     for p, ls, why in chosen.values():
-        for lg in sorted(ls): res['verified'].append(member(raw_verify(p), 'sample', lg, dict(kind=why)))
+        for lg in sorted(ls): res['verified'].append(member(raw_verify(p), 'sample', lg, dict(kind=why, starts=sorted({a for a, b in pool_src.get(key_of(p), ())}), seeds=sorted({b for a, b in pool_src.get(key_of(p), ())}))))
     res['n_verified_distinct'] = len(cache); res['n_verified'] = len(res['verified']); res['n_pass'] = sum(v['meets_cutoff'] for v in res['verified'])
     # finalists: eligibility is judged on the verified scale of each DISTINCT point (valid for every cutoff it reaches), not on the cutoff of the job that produced it
     good = {}
