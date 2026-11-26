@@ -36,5 +36,14 @@ row('\\quad boundary at $\\mu_0=m_{\\rm heavy}/2,\\,2m_{\\rm heavy}$', lambda r:
 row('\\quad quartics $\\times1.1,\\,\\times0.9$', lambda r: '%.1f, %.1f' % (rb(r, 'qscale_1.1'), rb(r, 'qscale_0.9')))
 row('\\quad $y_t\\pm2\\%$, $g_s\\pm3\\%$ (min)', lambda r: '%.1f, %.1f' % (min(rb(r, 'sm_yt_1.02'), rb(r, 'sm_yt_0.98')), min(rb(r, 'sm_gs_1.03'), rb(r, 'sm_gs_0.97'))))
 row('minimum over the 13 prescribed variants', lambda r: '%.1f' % r['certified_log10_scale'])
+def _aux(kind, r, key):
+    """minimum over the 13 variants from the one-loop matching (results/matching) or the all-Yukawa run (results/yukawa), if present"""
+    names = {id(v): k for k, v in B.items() if isinstance(v, dict) and 'robustness' in v}
+    nm = names[id(r)]
+    fn = os.path.join(ROOT, 'results', kind, ('matching_%s_k1.json' % nm) if kind == 'matching' else ('yukawa_%s_all.json' % nm))
+    try: return '%.1f' % json.load(open(fn))['min']
+    except (OSError, KeyError): return 'n/a'
+row('\\quad with all Yukawa couplings evolved', lambda r: _aux('yukawa', r, 'min'))
+row('\\quad with one-loop (effective-potential) matching', lambda r: _aux('matching', r, 'min'))
 row('first failure', lambda r: r['robustness']['default']['fail'])
 row('no deeper minimum found (1500 starts)', lambda r: 'EW' if r['robustness']['vacuum']['global_ok'] else 'not established')

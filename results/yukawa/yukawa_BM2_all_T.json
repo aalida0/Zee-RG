@@ -1,0 +1,11 @@
+{
+ "name": "BM2",
+ "mode": "all_T",
+ "min": 13.511781505064217,
+ "variants": {
+  "default": {
+   "log10": 13.511781505064217,
+   "fail": "unitarity"
+  }
+ }
+}

@@ -1,0 +1,11 @@
+{
+ "name": "S4",
+ "mode": "all",
+ "min": 12.413744990519762,
+ "variants": {
+  "default": {
+   "log10": 12.413744990519762,
+   "fail": "unitarity"
+  }
+ }
+}

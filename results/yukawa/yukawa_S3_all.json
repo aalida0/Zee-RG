@@ -1,0 +1,11 @@
+{
+ "name": "S3",
+ "mode": "all",
+ "min": 12.618882471932261,
+ "variants": {
+  "default": {
+   "log10": 12.618882471932261,
+   "fail": "unitarity"
+  }
+ }
+}

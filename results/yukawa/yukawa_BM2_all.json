@@ -1,0 +1,59 @@
+{
+ "name": "BM2",
+ "mode": "all",
+ "min": 12.064395625309205,
+ "variants": {
+  "default": {
+   "log10": 13.511781488374915,
+   "fail": "unitarity"
+  },
+  "match_x0.5": {
+   "log10": 13.2846630677899,
+   "fail": "unitarity"
+  },
+  "match_x1": {
+   "log10": 13.52624092669889,
+   "fail": "unitarity"
+  },
+  "match_x2": {
+   "log10": 13.708886317312789,
+   "fail": "unitarity"
+  },
+  "matchH_x0.5": {
+   "log10": 13.444510958045237,
+   "fail": "unitarity"
+  },
+  "matchH_x1": {
+   "log10": 13.655061043633552,
+   "fail": "unitarity"
+  },
+  "matchH_x2": {
+   "log10": 13.778186628041226,
+   "fail": "unitarity"
+  },
+  "qscale_1.1": {
+   "log10": 12.064395625309205,
+   "fail": "unitarity"
+  },
+  "qscale_0.9": {
+   "log10": 15.173864856378282,
+   "fail": "unitarity"
+  },
+  "sm_yt_1.02": {
+   "log10": 13.55288489253923,
+   "fail": "unitarity"
+  },
+  "sm_yt_0.98": {
+   "log10": 13.451417067960946,
+   "fail": "unitarity"
+  },
+  "sm_gs_1.03": {
+   "log10": 13.507320102767197,
+   "fail": "unitarity"
+  },
+  "sm_gs_0.97": {
+   "log10": 13.53685364277765,
+   "fail": "unitarity"
+  }
+ }
+}

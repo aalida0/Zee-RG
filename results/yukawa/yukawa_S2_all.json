@@ -1,0 +1,11 @@
+{
+ "name": "S2",
+ "mode": "all",
+ "min": 8.44071431757902,
+ "variants": {
+  "default": {
+   "log10": 8.44071431757902,
+   "fail": "unitarity"
+  }
+ }
+}
