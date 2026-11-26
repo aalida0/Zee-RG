@@ -1,12 +1,15 @@
 """Write condor/campaign.sub.
-Usage: python3 make_campaign_sub.py RUN_ID [pilot|full] [WALL=1380]
-  full  : 1980 chains = 780 sample chains (logL -1 [low-energy baseline, nominal tree-level boundary only], 0 [theory-prefiltered reference: nominal and
-          quartic-rescaled boundaries valid at the start, no scale requirement], 6, 8, 10, 12 x 5 starts x 26 seeds)
-          + 1200 maximise chains (mu_e_g, tau_mu_g, h_tau_mu x logL 8,10,12,14 x 5 starts x 20 seeds; half with walk margin 1, half with margin 0)
-  pilot : 20 chains covering every mode, every start and the hard target logL=14 (run this first, on the worker nodes, and inspect it with collect_campaign.py).
+Usage: python3 make_campaign_sub.py RUN_ID [pilot|pilot2|full] [WALL=2400]
+  full   : job list from the pilot-1 evidence (see SAMPLE_SEEDS / MAX_SEEDS below): sample chains at logL -1 [low-energy baseline, nominal tree-level
+           boundary only], 0 [theory-prefiltered reference], 6, 8, 10, 12 and maximise chains (mu_e_g, tau_mu_g, h_tau_mu) at logL 8, 10, 12, 14.
+           Seeds are allocated per (logL, start): full quotas where a start can stand inside the target, small probe quotas where pilot 1 showed
+           (or the start score suggests) that the chain cannot climb to the cutoff (start 2; start 4 at logL 12; logL 14 for every start).
+  pilot  : the first 20 chains (every mode, every start, hard target logL=14); already run as pilot1.
+  pilot2 : 11 chains re-testing what pilot 1 flagged (new start/logL pairs, the throttled certification of maximiser bests, a second seed of the
+           low-acceptance sample chain); same seeds as pilot 1 where a comparison is wanted.
 Every job needs RUN_ID (an immutable checkout from make_run.sh); outputs go to $HOME/zee_env/runs/RUN_ID/out."""
 import sys
-RUN = sys.argv[1]; KIND = sys.argv[2] if len(sys.argv) > 2 else 'pilot'; WALL = int(sys.argv[3]) if len(sys.argv) > 3 else 1380
+RUN = sys.argv[1]; KIND = sys.argv[2] if len(sys.argv) > 2 else 'pilot'; WALL = int(sys.argv[3]) if len(sys.argv) > 3 else 2400
 head = f"""universe = vanilla
 executable = campaign_job.sh
 arguments = $(mode) $(logL) $(seed) {WALL} $(start) $(margin)
@@ -22,17 +25,29 @@ request_cpus = 1
 request_memory = 3GB
 request_disk = 2GB
 """
-jobs = []      # (mode, logL, seed, start, margin); margin = walk prefilter logL + margin of the maximiser (0: the requested cutoff itself)
 NST = 5                                           # results/campaign_starts.json: BM1, BM2 and three further starts passing the staged gate
+# Coarse reach scores of the five starts (campaign.coarse_reach with the rescaled boundaries, 2026-11-26): 10.75, 12.51, 6.75, 11.48, 11.77.
+# Pilot 1: start 2 cannot climb to logL 10 in the burn-in (sample and maximiser chains identical, no stored point); start 4 stalls at logL 12 (82 accepted moves);
+# no start climbs to logL 14 (69, 18, 18, 18, 82 accepted moves).  Those pairs get probe quotas only; the freed chains go to the productive pairs.
+SAMPLE_SEEDS = {-1: (26, 26, 26, 26, 26), 0: (26, 26, 26, 26, 26), 6: (26, 26, 26, 26, 26),            # seeds per start 0..4
+                8: (36, 36, 6, 36, 36), 10: (44, 44, 3, 44, 44), 12: (70, 70, 0, 8, 3)}
+MAX_SEEDS = {8: (24, 24, 4, 24, 24), 10: (38, 38, 2, 38, 38), 12: (50, 50, 0, 8, 3), 14: (2, 2, 0, 2, 0)}  # per observable; margin 1 only for the productive pairs at logL <= 10
+MARGIN1 = {8: (0, 1, 3, 4), 10: (0, 1, 3, 4)}                                                          # (logL: starts whose chains may use walk margin 1; half of their seeds do)
+jobs = []      # (mode, logL, seed, start, margin); margin = walk prefilter logL + margin of the maximiser (0: the requested cutoff itself)
 if KIND == 'full':
-    # logL = -1: low-energy baseline (nominal tree-level boundary only); logL = 0: theory-prefiltered reference (nominal + quartic-rescaled boundaries valid at the start)
-    for logL in (-1, 0, 6, 8, 10, 12):
+    for logL, ns in SAMPLE_SEEDS.items():
         for st in range(NST):
-            for s in range(26): jobs.append(('sample', logL, st*1000 + s, st, 0))
+            for s in range(ns[st]): jobs.append(('sample', logL, st*1000 + s, st, 0))
     for obs in ('mu_e_g', 'tau_mu_g', 'h_tau_mu'):
-        for logL in (8, 10, 12, 14):
+        for logL, ns in MAX_SEEDS.items():
             for st in range(NST):
-                for s in range(20): jobs.append(('max:' + obs, logL, st*1000 + s, st, 1.0 if s < 10 else 0.0))
+                for s in range(ns[st]):
+                    m1 = st in MARGIN1.get(logL, ()) and s < ns[st]//2
+                    jobs.append(('max:' + obs, logL, st*1000 + s, st, 1.0 if m1 else 0.0))
+elif KIND == 'pilot2':
+    for logL, st, s in ((8, 2, 1), (8, 0, 1), (12, 1, 1), (12, 3, 1), (-1, 0, 2)): jobs.append(('sample', logL, st*1000 + s, st, 0))
+    for m, logL, st, s in (('mu_e_g', 10, 3, 1), ('h_tau_mu', 10, 1, 1), ('mu_e_g', 12, 0, 1), ('tau_mu_g', 12, 1, 1), ('h_tau_mu', 14, 3, 1), ('tau_mu_g', 8, 2, 1)):
+        jobs.append(('max:' + m, logL, st*1000 + s, st, 0.0))
 else:
     for logL, st in ((-1, 0), (0, 1), (10, 0), (10, 1), (10, 2), (10, 3), (10, 4), (12, 0), (12, 4)): jobs.append(('sample', logL, st*1000 + 1, st, 0))
     for m, logL, st, mg in (('mu_e_g', 10, 0, 1.0), ('mu_e_g', 10, 3, 0.0), ('mu_e_g', 14, 0, 1.0), ('mu_e_g', 14, 1, 0.0),
@@ -42,4 +57,4 @@ else:
 body = ''.join(f"mode={m}\nlogL={l}\nseed={sd}\nstart={st}\nmargin={mg}\nqueue\n" for m, l, sd, st, mg in jobs)
 open('campaign.sub', 'w').write(head + body)
 import json; json.dump([dict(mode=m, logL=float(l), seed=sd, start=st, margin=mg) for m, l, sd, st, mg in jobs], open('expected_jobs_%s_%s.json' % (KIND, RUN), 'w'), indent=0)   # exact expected job IDs for the collector (EXPECT_FILE)
-print(len(jobs), 'jobs (%s), run %s' % (KIND, RUN))
+print(len(jobs), 'jobs (%s), run %s, wall %d s' % (KIND, RUN, WALL))

@@ -247,7 +247,8 @@ if __name__ == '__main__':
         elif r_['final_status'] == 'UNRESOLVED': best_unres = r_
         else: rej['best_failed_' + r_['vacuum']] = rej.get('best_failed_' + r_['vacuum'], 0) + 1
 
-    if key and (not climb or coarse_reach(info) >= logL): consider_best(zc, info, 0)                  # a valid start is a candidate best before any proposal is accepted
+    tried_obs = 0.0; tried_acc = -10**9                    # observable value / accepted-move index of the last certification attempt of ANY status (throttle, see below)
+    if key and (not climb or coarse_reach(info) >= logL): consider_best(zc, info, 0); tried_obs = obs_of(info, key); tried_acc = 0   # a valid start is a candidate best before any proposal is accepted
 
     n_enter = None if climb else 0                       # proposal index at which the chain first stands inside the walk target (0: valid from the start, None: never)
     while n < NPROP and time.time() - t0 < wall:
@@ -277,8 +278,12 @@ if __name__ == '__main__':
             if not burn: acc_post += 1
             if key and (not climb or coarse_reach(inf) >= logL):        # a state that already meets the REQUESTED cutoff is a candidate even if the optional extra-decade walk margin is not yet reached
                 if not climb: cur = obs_of(inf, key)
-                if obs_of(inf, key) > (best['obs'][key] if best else 0.0)*1.02:      # valid and unresolved tracks are independent: an unresolved high-rate point must not hide a lower, fully valid improvement
-                    consider_best(zn, inf, acc)
+                v_ = obs_of(inf, key)
+                # valid and unresolved tracks are independent: an unresolved high-rate point must not hide a lower, fully valid improvement.
+                # Throttle (pilot 1: a chain without a PASS best certified every accepted move, 151 certs / 537 s, 137 failed): after an attempt of any status, certify again
+                # only if the observable rose by >30% or 25 further moves were accepted; certified bests are unchanged, only the attempt cadence is.
+                if v_ > (best['obs'][key] if best else 0.0)*1.02 and (v_ > 1.3*tried_obs or acc - tried_acc >= 25):
+                    consider_best(zn, inf, acc); tried_obs = v_; tried_acc = acc
         if not key and not burn:                         # proposal-indexed storage: rejected proposals repeat the current state
             n_post += 1
             if n_post % STORE_PROP == 0 and len(trace) < NMAX:
