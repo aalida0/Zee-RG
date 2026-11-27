@@ -1,7 +1,7 @@
 """Common refit with the production statistic hgmodel.evaluate (H+-W-gamma set included): Yukawas |f|,|Y2| <= 0.1, the three free
 quartics lambda7, lambda8, lambda10 in [-3, 3] (lambda2 = lambda9 = lh = 0), lambda4 free.  Starts: the stored corrected NO fits and
 random perturbations of them.  Output: results/refit_hw.json (minimum, best point, all local minima).
-Usage: ZEE_INPUTS=modern python3 -W ignore gate2/refit_hw.py NPROC [NPERT=2]"""
+Usage: ZEE_INPUTS=modern python3 -W ignore gate2/refit_hw.py NPROC [NPERT=2]      (PSC = perturbation scale, default 0.15; ZEE_STU_LEGACY_HG=1 only for the historical printed-HG statistic)"""
 import sys, os, json, pickle, time, numpy as np
 os.environ.setdefault('ZEE_INPUTS', 'modern')
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -41,7 +41,7 @@ if __name__ == '__main__':
     for i, x in enumerate(starts):
         z = np.clip(tz(x), LO, HI); w = np.clip(np.array(d['eta_min'])[[1, 2, 4]], -EB, EB)
         jobs.append((len(jobs), z, w))
-        for _ in range(NPT): jobs.append((len(jobs), np.clip(z + rng.normal(0, 1, 19)*XS*0.15, LO, HI), rng.uniform(-EB, EB, 3)))
+        for _ in range(NPT): jobs.append((len(jobs), np.clip(z + rng.normal(0, 1, 19)*XS*float(os.environ.get('PSC', 0.15)), LO, HI), rng.uniform(-EB, EB, 3)))
     t0 = time.time(); print('jobs', len(jobs), flush=True)
     with Pool(NP) as P: R = list(P.imap_unordered(run, jobs))
     R = sorted([r for r in R if np.isfinite(r['chi2'])], key=lambda r: r['chi2'])

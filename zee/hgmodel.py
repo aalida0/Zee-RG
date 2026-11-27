@@ -26,6 +26,10 @@ OSC = {"NO": dict(s12=(0.306, .012), s13=(0.02166, .00075), s23=(0.441, .027), d
                   dm3=(2.524e-3, .040e-3), d=(261., 59.)),
        "IO": dict(s12=(0.306, .012), s13=(0.02179, .00076), s23=(0.587, .024), dm21=(7.50e-5, .19e-5),
                   dm3=(-2.514e-3, .041e-3), d=(277., 46.))}
+# Charged-charged term of T: the general Zee/multi-Higgs result is -2 w1 w2 F (Grimus et al. 0711.4022 Eq. 70); the printed HG expression has -w1 w2 F.
+# The physical default is the general result; the printed HG form is kept only as a named historical reproduction (ZEE_STU_LEGACY_HG=1; V13 referee report P0).
+import os as _os
+STU_HG_LEGACY = _os.environ.get("ZEE_STU_LEGACY_HG") == "1"
 STU_C = np.array([0.05, 0.09, 0.01]); STU_S = np.array([.11, .13, .11])
 STU_COV = np.array([[1, .90, -.59], [.90, 1, -.83], [-.59, -.83, 1]]) * np.outer(STU_S, STU_S)
 UNIV = {"tm": (1.0011, 0.0015), "te": (1.0030, 0.0015), "me": (1.0018, 0.0014)}   # HG-era inputs (older HFLAV); MODERN overrides
@@ -43,7 +47,11 @@ H_TAU_MU_LIMIT = 0.0015   # CMS HIG-20-009 (arXiv:2105.03007), 137 fb^-1: observ
 KAPPA = 1.0
 KAPPA3 = 0.25  # set by calibration in tests/test_texture.py (generic trilepton normalisation)
 import os as _os
-MODERN = _os.environ.get("ZEE_INPUTS", "hg") == "modern"
+# ZEE_INPUTS=modern2026: the single coherent modern input set (V13 referee): "modern" plus the RPP 2026 free-U oblique fit, the exact half-normal factor z_0.975 = 1.95996 and the DESI-DR2 sum m_nu < 0.0642 eV.
+# Each can still be overridden by its variable (ZEE_STU=fit2016, ZEE_Z95=1.949, ZEE_SUMM_LIMIT=0.072) for sensitivity runs; "modern" keeps the frozen inputs of the archived campaign.
+if _os.environ.get("ZEE_INPUTS", "hg") == "modern2026":
+    for _k, _v in (("ZEE_STU", "rpp2026"), ("ZEE_Z95", "1.95996"), ("ZEE_SUMM_LIMIT", "0.0642")): _os.environ.setdefault(_k, _v)
+MODERN = _os.environ.get("ZEE_INPUTS", "hg") in ("modern", "modern2026")
 # single ingredients for the controlled reproduction of HG (ZEE_ING=osc,lfv,cr,cosmo,amu,univ); "modern" switches all on
 ING = set("osc lfv cr cosmo amu univ".split()) if MODERN else set(filter(None, _os.environ.get("ZEE_ING", "").split(",")))
 if "lfv" in ING:
@@ -350,7 +358,7 @@ def evaluate(x, ordering="NO", with_stu=True, eta=None):
     chi_u = float(np.sum(univ_resid(uni) ** 2))
     chi_stu = 0.0; stu_v = (np.nan,) * 3
     if with_stu:
-        stu_v = T.stu(sc["m1"], sc["m2"], sc["phi"], sc["mH"], sc["mA"], sc["cba"], mh=MH, hg_factor=True)
+        stu_v = T.stu(sc["m1"], sc["m2"], sc["phi"], sc["mH"], sc["mA"], sc["cba"], mh=MH, hg_factor=STU_HG_LEGACY)
         d = np.array(stu_v) - STU_C
         chi_stu = float(d @ np.linalg.solve(STU_COV, d))
     # Higgs signals (approximate)

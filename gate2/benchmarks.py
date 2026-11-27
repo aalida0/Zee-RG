@@ -3,7 +3,7 @@ benchmark) and the laboratory minimum results/refit_corrected.pkl, applies the s
 computes the complex dipole components, neutrino quantities, collider predictions and the RG/vacuum robustness pieces,
 and writes strict JSON results/benchmarks.json (no NaN). Robustness pieces are cached in results/bench_cache/ under a key
 that hashes (x, eta, piece, physics source files), so a changed kernel never reuses stale pieces.
-Usage: ZEE_INPUTS=modern python gate2/benchmarks.py [BM1 BM2 ...]"""
+Usage: ZEE_INPUTS=modern python gate2/benchmarks.py [BM1 BM2 ...]      (corrected statistic: ZEE_INPUTS=modern2026 BM_CMIN_FILE=results/refit_hw_cT_all.json BM_INPUT=... BM_OUTPUT=...)"""
 import sys, os, json, pickle, hashlib, glob, numpy as np
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path[:0] = [ROOT, os.path.join(ROOT, 'gate1'), os.path.join(ROOT, 'gate2')]
@@ -101,7 +101,7 @@ def record(name, x, eta, cmin):
 
 if __name__ == '__main__':
     inp = json.load(open(os.environ.get('BM_INPUT', os.path.join(RES, 'benchmarks_input.json'))))     # BM_INPUT/BM_OUTPUT: e.g. results/campaign_finalists.json
-    cmin = float(json.load(open(os.path.join(RES, 'refit_hw.json')))['best']['chi2'])     # common refit with the production statistic (gate2/refit_hw.py)
+    cmin = float(json.load(open(os.environ.get('BM_CMIN_FILE', os.path.join(RES, 'refit_hw.json'))))['best']['chi2'])     # common refit with the production statistic (gate2/refit_hw.py); BM_CMIN_FILE: e.g. results/refit_hw_cT_all.json (corrected T, modern2026)
     names = [n for n in inp if len(sys.argv) == 1 or n in sys.argv[1:]]
     out = {}
     fn = os.environ.get('BM_OUTPUT', os.path.join(RES, 'benchmarks.json'))

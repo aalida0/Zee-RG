@@ -1,7 +1,7 @@
 """Exact range of the CLFV rates over the overall multiplier s of the H+-W-+gamma Barr-Zee set, |s| <= 1 (report v11).
 The amplitude vector is A + s B (A: everything else, B: the H+-W-+gamma set) and each rate is |A + s B|^2 = a + b s + c s^2 with c = |B|^2 >= 0, so the range over [-1, 1] is
 [Br(s*), max(Br(-1), Br(1))] with s* = clip(-b/(2c), -1, 1) = clip(-Re(A^dagger B)/||B||^2, -1, 1); a, b, c follow from s = 0, +1, -1 (verified to be exactly quadratic with s = 0.5).
-Usage: ZEE_INPUTS=modern python3 -W ignore gate2/hw_envelope.py -> results/hw_envelope.json"""
+Usage: ZEE_INPUTS=modern python3 -W ignore gate2/hw_envelope.py [INPUT.json OUTPUT.json] -> results/hw_envelope.json"""
 import os, sys, json, numpy as np
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); sys.path[:0] = [ROOT, ROOT + '/gate2']
 os.environ.setdefault('ZEE_INPUTS', 'modern')
@@ -26,7 +26,9 @@ def envelope(x, eta):
 
 
 if __name__ == '__main__':
-    inp = json.load(open(os.path.join(ROOT, 'results', 'benchmarks_input.json')))
+    fin = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, 'results', 'benchmarks_input.json')               # optional: INPUT.json OUTPUT.json (e.g. results/corrected/benchmarks_input_corrected.json)
+    fout = sys.argv[2] if len(sys.argv) > 2 else os.path.join(ROOT, 'results', 'hw_envelope.json')
+    inp = json.load(open(fin))
     res = {nm: envelope(np.array(d['x'], float), np.array(d['eta'], float)) for nm, d in inp.items()}
-    json.dump(res, open(os.path.join(ROOT, 'results', 'hw_envelope.json'), 'w'), indent=1)
+    json.dump(res, open(fout, 'w'), indent=1)
     for nm, r in res.items(): print(nm, {k: ('s*=%.2f min=%.2e max=%.2e nom=%.2e quad=%.1e' % (v['s_min'], v['min'], v['max'], v['nominal'], v['quad_check'])) for k, v in r.items()})

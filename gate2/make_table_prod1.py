@@ -5,18 +5,20 @@ Usage: python3 gate2/make_table_prod1.py [BP1 BP3 ...] > /tmp/bm_rows.tex      (
 import json, os, sys, numpy as np
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); sys.path[:0] = [ROOT, os.path.dirname(os.path.abspath(__file__))]
 from accept import HSREF, DCHI2
-P1 = os.path.join(ROOT, 'results', 'prod1')
-B0 = json.load(open(os.path.join(ROOT, 'results', 'benchmarks.json'))); B1 = json.load(open(os.path.join(P1, 'benchmarks_prod1.json')))
-SRC = json.load(open(os.path.join(P1, 'benchmarks_input_prod1.json')))          # origin string carries the finalist id
-sel = sys.argv[1:] or ['BP1', 'BP3']
-B = {k: v for k, v in B0.items() if isinstance(v, dict) and v.get('accepted')}; B.update({k: B1[k] for k in sel})
+P1 = os.path.join(ROOT, 'results', 'prod1'); PC = os.path.join(ROOT, 'results', 'corrected')
+# corrected-statistic records (V13 referee P0): all four columns come from results/corrected/benchmarks_corrected.json (gate2/benchmarks.py with ZEE_INPUTS=modern2026, BM_CMIN_FILE=results/refit_hw_cT_all.json);
+# BM1/BM2 validation records: results/validation, BP1 = finalist C42: results/prod1/validate_C42.json, BP3 (finalist C35 polished, key BP3c): results/corrected/validate_BP3c.json
+C = json.load(open(os.path.join(PC, 'benchmarks_corrected.json'))); ENV = json.load(open(os.path.join(PC, 'hw_envelope_corrected.json')))
+sel = sys.argv[1:] or ['BM1', 'BM2', 'BP1', 'BP3c']
+B = {k: C[k] for k in sel}
+VALFILE = {'BM1': os.path.join(ROOT, 'results', 'validation', 'validate_BM1.json'), 'BM2': os.path.join(ROOT, 'results', 'validation', 'validate_BM2.json'),
+           'BP1': os.path.join(P1, 'validate_C42.json'), 'BP3c': os.path.join(PC, 'validate_BP3c.json')}
 names = list(B)
 def sci(v):
     if v == 0: return '0'
     e = int(np.floor(np.log10(abs(v)))); m = v/10**e; return '$%.1f\\times10^{%d}$' % (m, e)
 def row(label, f): print(label + ' & ' + ' & '.join(f(n, B[n]) for n in names) + '\\\\')
-def val(n):
-    cid = SRC[n]['origin'].split('finalist ')[1].split(' ')[0]; return json.load(open(os.path.join(P1, 'validate_%s.json' % cid)))
+def val(n): return json.load(open(VALFILE[n]))
 print('% columns:', ' '.join(names))
 row('$m_H,\\ m_A$ [GeV]', lambda n, r: '%.0f, %.0f' % (r['masses']['H'], r['masses']['A']))
 row('$m_{h_1^+},\\ m_{h_2^+}$ [GeV]', lambda n, r: '%.0f, %.0f' % (r['masses']['h1p'], r['masses']['h2p']))
@@ -31,6 +33,7 @@ row('$\\max|Y_2|$, $|f_{\\mu\\tau}|$', lambda n, r: '%.3f, %s' % (max(max(abs(a)
 print('\\midrule')
 for lab, k in (('$\\Br(\\mu\\to e\\gamma)$', 'mu_e_g'), ('$\\Br(\\tau\\to\\mu\\gamma)$', 'tau_mu_g'), ('$\\Br(\\tau\\to e\\gamma)$', 'tau_e_g'), ('$\\Br(\\mu\\to3e)$ (dipole)', 'mu_3e'), ('$|d_e|$ [$e$\\,cm]', 'd_e')):
     row(lab, lambda n, r, k=k: sci(r['observables'][k]))
+row('\\quad range for $|s|\\le1$', lambda n, r: '%s--%s' % (sci(ENV[n]['tau_mu_g']['min']), sci(ENV[n]['tau_mu_g']['max'])))
 row('$\\Br(h\\to\\tau\\mu)$', lambda n, r: sci(r['collider']['BR_h_tau_mu']) if r.get('collider') else 'n/a')
 row('$B\\to X_s\\gamma$ [$10^{-4}$]', lambda n, r: '%.2f' % r['bsgamma_e4'])
 row('$\\chi^2$ ($\\chi^2_{\\min}=%.2f$, limit $%.2f$)' % (B[names[0]]['chi2_min'], B[names[0]]['chi2_min'] + DCHI2), lambda n, r: '%.2f' % r['chi2'])
@@ -47,7 +50,7 @@ row('\\quad quartics $\\times1.1,\\,\\times0.9$', lambda n, r: '%.1f, %.1f' % (r
 row('\\quad $y_t\\pm2\\%$, $g_s\\pm3\\%$ (min)', lambda n, r: '%.1f, %.1f' % (min(rb(r, 'sm_yt_1.02'), rb(r, 'sm_yt_0.98')), min(rb(r, 'sm_gs_1.03'), rb(r, 'sm_gs_0.97'))))
 row('minimum over the 13 prescribed variants', lambda n, r: '%.1f' % r['certified_log10_scale'])
 import validate_finalist as VF
-def vrec(n): return json.load(open(os.path.join(ROOT, 'results', 'validation', 'validate_%s.json' % n))) if n in B0 else val(n)       # ALL columns from the same kind of validation record
+def vrec(n): return val(n)       # ALL columns from the same kind of validation record
 ASS = {n: VF.assess(vrec(n)) for n in names}                                                                                          # one assessment logic for every column (exact 7-prescription coverage)
 rng = lambda v: '%.1f' % min(v) if '%.1f' % min(v) == '%.1f' % max(v) else '%.1f--%.1f' % (min(v), max(v))
 def fmt_modes(n, modes, key):

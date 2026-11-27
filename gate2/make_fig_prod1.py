@@ -5,6 +5,7 @@ Conventions (report v12): points are identified by the full vector x+eta; the tr
 matching scale in every variant (no scale) is drawn at the left margin in a separate 'unbounded' category, never at an invented scale; a finalist whose tree scale collapses under the 0.9
 quartic stress (C40) is joined to its stress minimum by an arrow.  Horizontal lines: present 90% CL limits and projected sensitivities as in Table 1 of the draft (MEG II 1.5e-13, MEG II design
 6e-14, Belle 4.2e-8, Belle II reach 1e-9, CMS h->tau mu 1.5e-3).
+Corrected-statistic version: only points that pass the corrected gate (results/prod1/reeval_corrected_all.json) are drawn; BP3 is replaced by BP3c (results/corrected).
 Usage: python3 gate2/make_fig_prod1.py OUT.pdf"""
 import json, os, sys, glob, numpy as np
 import matplotlib; matplotlib.use('Agg'); import matplotlib.pyplot as plt
@@ -12,18 +13,21 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); P = os.path.
 S = json.load(open(os.path.join(P, 'campaign_summary.json'))); F = json.load(open(os.path.join(P, 'campaign_finalists.json')))
 key = lambda x, eta: tuple(np.round(np.concatenate([np.asarray(x, float), np.asarray(eta, float)]), 12))      # full vector x+eta, not x alone
 idx = {key(v['x'], v['eta']): v for v in S['verified']}
-V = [v for v in S['verified'] if v['status'] == 'PASS' and v['screen13'] is not None]
+RE = json.load(open(os.path.join(P, 'reeval_corrected_all.json')))['records']                                  # re-evaluation under the corrected oblique-T statistic (gate2/reeval_archive.py)
+okv = {key(r['x'], r['eta']) for r in RE if r['status_new'] == 'PASS'}
+V = [v for v in S['verified'] if v['status'] == 'PASS' and v['screen13'] is not None and key(v['x'], v['eta']) in okv]
 OBS = (('mu_e_g', r'$\mathrm{Br}(\mu\to e\gamma)$', ((1.5e-13, 'MEG II limit'), (6e-14, 'MEG II design'))),
        ('tau_mu_g', r'$\mathrm{Br}(\tau\to\mu\gamma)$', ((4.2e-8, 'Belle limit'), (1e-9, 'Belle II reach'))),
        ('h_tau_mu', r'$\mathrm{Br}(h\to\tau\mu)$', ((1.5e-3, 'CMS limit'),)))
 XU = 1.0                                                                                                        # x position of the 'unbounded at matching scale' category
 fin = {}
-for f in glob.glob(os.path.join(P, 'screen_ep', 'validate_C*.json')):
+for f in glob.glob(os.path.join(P, 'screen_ep', 'validate_C*.json')) + glob.glob(os.path.join(ROOT, 'results', 'corrected', 'screen_ep', 'validate_C*.json')):   # second directory: corrected-gate passes screened after the V13 report
     n = os.path.basename(f)[9:-5]; d = json.load(open(f)); m = d['matching']['ep']; v = idx[key(F[n]['x'], F[n]['eta'])]
     clean = m['complete'] and m['n_start_fail'] == 0 and m['min_stress'] is not None and m['min_stress'] >= 10
     # no scale at all (every variant unbounded at the matching scale): separate category; a partial minimum over the defined variants is drawn as such
+    if key(F[n]['x'], F[n]['eta']) not in okv: continue                                                       # fails the corrected gate: not drawn
     fin[n] = dict(tree=d['tree']['min'], ms=m['min_stress'], n_def=m['n_defined'], clean=clean, obs=v['obs'])
-BP = {'BP1': 'C42', 'BP3': 'C35'}
+BP = {'BP1': 'C42'}
 REF = {}                                                       # validated witnesses: stress-inclusive minimum over the defined variants of all prescriptions in the validation record
 B0 = json.load(open(os.path.join(ROOT, 'results', 'benchmarks.json')))
 def _ref(vr, obs):
@@ -32,6 +36,8 @@ def _ref(vr, obs):
 for n in ('BM1', 'BM2'):
     REF[n] = _ref(json.load(open(os.path.join(ROOT, 'results', 'validation', 'validate_%s.json' % n))), dict(B0[n]['observables'], h_tau_mu=B0[n]['collider']['BR_h_tau_mu']))
 for b_, c_ in BP.items(): REF[b_] = _ref(json.load(open(os.path.join(P, 'validate_%s.json' % c_))), fin[c_]['obs'])
+_c = json.load(open(os.path.join(ROOT, 'results', 'corrected', 'benchmarks_corrected.json')))['BP3c']                  # BP3 polished under the corrected statistic
+REF['BP3c'] = _ref(json.load(open(os.path.join(ROOT, 'results', 'corrected', 'validate_BP3c.json'))), dict(_c['observables'], h_tau_mu=_c['collider']['BR_h_tau_mu']))
 fig, ax = plt.subplots(1, 3, figsize=(10.5, 3.4))
 for a, (k, lab, lines) in zip(ax, OBS):
     a.scatter([v['screen13'] for v in V], [max(v['obs'][k], 1e-19) for v in V], s=5, c='0.75', lw=0, label='verified points')
@@ -46,7 +52,7 @@ for a, (k, lab, lines) in zip(ax, OBS):
         if r['tree'] - r['ms'] > 5: a.annotate('', (r['ms'], y), (r['tree'], y), arrowprops=dict(arrowstyle='->', color=col, lw=0.8))         # collapse under the matched stress (C39, C40)
     for b, r in REF.items():
         y = max(r['obs'][k], 1e-19)
-        a.scatter([r['ms']], [y], s=30, facecolors='none' if r['partial'] else '#0072B2', edgecolors='#0072B2', marker='*', lw=0.8, zorder=4); a.annotate(b, (r['ms'], y), fontsize=7, xytext=(3, -8), textcoords='offset points', color='#0072B2')
+        a.scatter([r['ms']], [y], s=30, facecolors='none' if r['partial'] else '#0072B2', edgecolors='#0072B2', marker='*', lw=0.8, zorder=4); a.annotate(b.replace('BP3c', 'BP3'), (r['ms'], y), fontsize=7, xytext=(3, -8), textcoords='offset points', color='#0072B2')
     a.set_yscale('log'); a.set_xlabel(r'$\log_{10}(\Lambda/\mathrm{GeV})$'); a.set_ylabel(lab); a.set_xlim(0.2, 16.5); a.set_xticks([XU, 4, 8, 12, 16]); a.set_xticklabels(['unb.', '4', '8', '12', '16'])
 ax[0].set_ylim(1e-19, 3e-13); ax[1].set_ylim(1e-10, 5e-8); ax[2].set_ylim(1e-9, 3e-3)
 h = [plt.Line2D([], [], c='0.75', marker='o', ls='', ms=3, label='re-verified points (screening scale)'),
