@@ -11,7 +11,7 @@ def test_prod1_table_and_validation_records_are_consistent():
     ass = lambda p: VF.assess(json.load(open(p)))                                      # stored records re-assessed with the current exact-coverage logic
     V0 = os.path.join(ROOT, 'results', 'validation')
     a1, a2 = ass(os.path.join(V0, 'validate_BM1.json')), ass(os.path.join(V0, 'validate_BM2.json'))
-    assert a1['all_prescriptions_complete'] and a1['classification'].startswith('robust') and abs(a1['robust_scale'] - 11.3717) < 1e-3          # BM1 is a fully prescription-robust reference witness (report v12 P0)
+    assert a1['all_prescriptions_complete'] and a1['classification'].startswith('robust') and abs(a1['robust_scale_matching_only'] - 11.3717) < 1e-3 and abs(a1['robust_scale'] - 11.3692) < 1e-3 and a1['all_combined_yukawa_complete']          # BM1 is a fully prescription-robust reference witness (report v12 P0)
     assert not a2['all_prescriptions_complete'] and a2['n_prescriptions_complete'] == 5 and a2['classification'].startswith('EP-clean')
     cls = {c: ass(os.path.join(P, 'validate_%s.json' % c))['classification'] for c in ('C42', 'C57', 'C35')}
     assert cls['C35'].startswith('robust') and cls['C42'].startswith('EP-clean') and cls['C57'].startswith('EP-clean')                               # BP3 robust; BP1 and BP2 EP-clean only

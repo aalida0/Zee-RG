@@ -67,3 +67,13 @@ current validation code; state this in the release.
   both pasted into the draft; the draft compiles. New numbers from the regenerated table: smallest matched V_red margins BM1 0.015, BM2 -0.123, BP1 -0.003, BP3 0.025.
 - STILL OPEN: revalidate BM1 (and BM2) with validate_finalist.py (13 fine-grid tree variants, 7 combined matching+all-Yukawa modes; about 30-40 min per point on 2 cores);
   input updates for BP1/BP3; EP screen of the 22 unscreened finalists; two-loop for BM1/BP3 with matched boundaries.
+
+
+## Input-sensitivity and BM1 revalidation (2026-11-27)
+- BM1 revalidated with the current `gate2/validate_finalist.py` (7/7 prescriptions complete, robust scale 10^11.369 GeV incl. combined all-Yukawa, min matched margin 0.0149); Table 1 rows identical to the old record. BM2 not re-run (first-release record).
+- `gate2/input_sensitivity.py` (+ `ZEE_STU=rpp2026` hook in `zee/hgmodel.py`) -> `results/input_sensitivity.json`: margins chi2_min+3.84-chi2 per variation with a refit minimum for each (`refit_hw_{z95,rpp2026,nocosmo,allnew}.json`, local refits from the 21 stored minima, NPERT=0; DR2 is the earlier 63-start refit).
+  - exact z95: BM1/BM2/BP1/BP3 +0.85/+0.53/+0.52/+0.07; DR2: +0.79/+0.47/+0.46/+0.007; no cosmology: +0.84/+0.52/+0.50/+0.07.
+  - RPP-2026 oblique fit (stu.py constants, Table 10.8; re-verification fetch of the PDF was blocked by a redirect loop): BM1 -0.81, BM2 -7.5 (outside), BP1 +0.37, BP3 +0.80. All three updates together: -0.80/-7.54/+0.37/+0.80.
+  - The earlier draft statement "RPP 2026 oblique chi2 0.3-1.2" was wrong (actual 3.9/11.6/2.4/1.6 for BM1/BM2/BP1/BP3); corrected.
+- HiggsTools: hbdataset master (3539f9a) and hsdataset v1.1 (3c6c253) are the remote release heads. hbdataset `develop` (d709915, Mar 2026) adds ATLAS 138/fb h->mutau/etau (2302.05225) stored as 1.8e-4/2.0e-4 but the paper says 0.18%/0.20%; as stored BP1/BP3 come out excluded (h ratio 1.27/1.10), with the limit x10 all four allowed (0.13/0.11). Worth reporting upstream.
+- Still open: refit of BM1/BM2 under RPP-2026; BM2 revalidation; EP screen of 22 finalists; two-loop for BM1/BP3.
