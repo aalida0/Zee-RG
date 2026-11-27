@@ -30,6 +30,17 @@ def test_summary_never_turns_failure_into_scale():
     assert S['min_rematched'] == 12.5 and S['min_stress'] == 11.0 and not S['complete'] and S['n_match_failed'] == 1 and S['n_start_fail'] == 1
     assert MS.summarize({'a': dict(log10Lambda=None, fail='match_failed', stress=False)})['min_rematched'] is None
 
+def test_numerical_and_borderline_stops_have_no_scale():
+    """report v12 3.3: integration / nonfinite / 'BFB?' stops carry a finite prefix that is NOT a physical reach"""
+    res = {'default': dict(log10Lambda=12.0, fail='unitarity', stress=False), 'match_x1': dict(log10Lambda=14.2, fail='integration', stress=False),
+           'matchH_x1': dict(log10Lambda=13.0, fail='nonfinite', stress=False), 'qscale_1.1': dict(log10Lambda=9.0, fail='BFB?', stress=True),
+           'sm_yt_1.02': dict(log10Lambda=16.0, fail=None, stress=False)}
+    S = MS.summarize(res)
+    assert not S['complete'] and S['n_numerical'] == 3 and S['n_defined'] == 2 and S['numerical_prefix_min'] == 9.0
+    assert S['min_rematched'] == 12.0 and S['min_stress'] == 12.0                 # the 9.0 of the borderline stress variant is not a scale; the ceiling (16.0) is
+    ok = MS.summarize({'a': dict(log10Lambda=16.0, fail=None, stress=False), 'b': dict(log10Lambda=11.0, fail='BFB', stress=True)})
+    assert ok['complete'] and ok['min_stress'] == 11.0 and ok['n_numerical'] == 0
+
 def test_no_mutable_default_cache():
     import inspect
     assert inspect.signature(MS.piece_matched).parameters['cache'].default is None

@@ -8,7 +8,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path[:0] = [ROOT, os.path.join(ROOT, 'gate1'), os.path.join(ROOT, 'gate2')]
 os.environ.setdefault('ZEE_INPUTS', 'modern')
 from scipy.integrate import solve_ivp
-import bench, cert as CE
+import bench, cert as CE, matched_scales as MS
 from zee import rgfull as F, hgmodel as H, matching as MA, matching_full as MF
 from zee.observables import M_LEP
 V = 246.22; YMAX = np.sqrt(4*np.pi); LOG16 = np.log(1e16); YB = np.sqrt(2)*2.7/V
@@ -73,15 +73,25 @@ def cert_full(x, eta, mode, variants=CE.FULL, n_per_dec=100, match=None):
         mres = None
         if match:                                                       # combined run: re-matched boundary quartics (zee/matching[_full]) AND all Yukawa couplings evolved
             mu0 = float(np.exp(tt)); g_ = np.asarray(g0, float); scl = float(p.split('_')[1]) if p.startswith('qscale') else 1.0
-            mres = MA.match(c, sc, mu0, tuple(g_[:3]), float(g_[3]), r) if match == 'ep' else MF.match_full(c, sc, mu0, tuple(g_[:3]), float(g_[3]), r, prescription=match.split('-', 1)[1])
-            if not mres['ok'] or mres['resid'] > 1e-6 or not np.all(np.isfinite(mres['c'])):
-                out[p] = dict(log10=None, fail='match_failed', match_resid=float(mres['resid'])); continue
+            mres = MS.do_match(c, sc, x, eta, mu0, g_, r, match, 1.0)     # same validity test, cache and exception handling as gate2/matched_scales (finite residual, finite matched quartics and mass parameters)
+            why = MS.match_valid(mres)
+            if why is not None:
+                out[p] = dict(log10=None, fail='match_failed', match_error=why, match_resid=float(mres['resid']), status='match_failed'); continue
             cc = mres['c']*scl
-        v = run_full(cc, tt, r, np.asarray(g0, float), y0, n_per_dec=n_per_dec)
+        v = run_full(cc, tt, r, np.asarray(g0, float), y0, n_per_dec=n_per_dec)      # n_per_dec is passed explicitly
         out[p] = dict(log10=float(v[0]), fail=v[1], proj_resid=float(run_full.proj), proj_accum=run_full.accum)
         if mres is not None: out[p].update(match_resid=float(mres['resid']), delta=[float(u) for u in mres['delta']])
-    vals = [o['log10'] for o in out.values() if o['log10'] is not None]
+    for o in out.values(): o['status'] = CE.variant_status(o['fail'])
+    # fail-closed minimum: only physical first failures and ceilings carry a scale; a start failure (-1 sentinel), a failed matching, a numerical stop or a borderline BFB never enter it
+    vals = [o['log10'] for o in out.values() if CE.eligible(o['status']) and o['log10'] is not None]
     return (min(vals) if vals else None), out
+
+
+def summarize_variants(out):
+    """completeness record of one cert_full run (all variants eligible = complete); the minimum returned by cert_full is over the eligible variants only"""
+    st = [o['status'] for o in out.values()]
+    return dict(complete=all(CE.eligible(s) for s in st), n_variants=len(st), n_start_fail=sum(s == 'boundary_failure' for s in st),
+                n_match_failed=sum(s == 'match_failed' for s in st), n_numerical=sum(s in ('numerical_stop', 'unresolved') for s in st))
 
 
 if __name__ == '__main__':
@@ -95,4 +105,4 @@ if __name__ == '__main__':
     try: os.makedirs(outdir, exist_ok=True)
     except OSError: outdir = '/tmp'
     json.dump(dict(name=name, mode=mode, match=match, min=m, variants=out), open(os.path.join(outdir, 'yukawa_%s_%s%s.json' % (name, mode, ('_' + match) if match else '')), 'w'), indent=1)
-    print(name, mode, match, 'min', m, {k: (round(v['log10'], 2), v['fail']) for k, v in out.items()})
+    print(name, mode, match, 'min', m, summarize_variants(out), {k: (None if v['log10'] is None else round(v['log10'], 2), v['fail']) for k, v in out.items()})

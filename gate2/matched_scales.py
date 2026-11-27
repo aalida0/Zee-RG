@@ -6,7 +6,8 @@ Fail-closed semantics (report v11): a variant whose matching did not converge (m
 fail='match_failed' with no scale, and a boundary that is unbounded / non-perturbative at the start is 'start:...' with no scale; neither is ever turned into a number.  The file reports
   min_rematched   minimum scale over the re-matched variants that have a defined scale   (None if none)
   min_stress      the same including the qscale stress variants
-  complete        True only if every variant has a defined scale; n_match_failed, n_start_fail count the others.
+  complete        True only if every variant has a defined scale from a physical first failure or a ceiling; n_match_failed, n_start_fail, n_numerical count the others
+                  (numerical stops and borderline BFB keep their finite prefix in numerical_prefix_min and never become a scale).
 The matched quartics, mass parameters, target (input) spectrum and the off-diagonal pole residual are stored for each variant.
 Usage: ZEE_INPUTS=modern python3 -W ignore gate2/matched_scales.py NAME [KAPPA] [MODE=ep|full-{sym,min,max}|full-hpole-{sym,min,max}] -> $ZEE_OUT/matching_<NAME>_k<KAPPA>.json  (NAME in benchmarks_input.json or S<i> of campaign_starts.json)"""
 import sys, os, json, numpy as np
@@ -72,11 +73,16 @@ def piece_matched(x, eta, p, kappa=1.0, cache=None, mode='ep'):
 
 
 def summarize(res):
-    defined = {p: v['log10Lambda'] for p, v in res.items() if v['log10Lambda'] is not None}
-    rem = [v for p, v in defined.items() if not res[p]['stress']]
-    return dict(min_rematched=min(rem) if rem else None, min_stress=min(defined.values()) if defined else None,
-                complete=len(defined) == len(res), n_defined=len(defined), n_variants=len(res),
-                n_match_failed=sum(v['fail'] == 'match_failed' for v in res.values()), n_start_fail=sum(str(v['fail']).startswith('start') for v in res.values()))
+    """fail-closed summary: only variants whose result is a physical first failure or a ceiling (cert.variant_status) carry a scale.  Start failures, failed matchings, numerical stops
+    (integration/nonfinite) and borderline BFB are counted separately; the finite prefix of a numerical stop is reported as numerical_prefix_min and never enters min_rematched/min_stress/complete."""
+    st = {p: CE.variant_status(v['fail']) for p, v in res.items()}
+    ok = {p: v['log10Lambda'] for p, v in res.items() if CE.eligible(st[p]) and v['log10Lambda'] is not None}
+    rem = [v for p, v in ok.items() if not res[p]['stress']]
+    num = [res[p]['log10Lambda'] for p in res if st[p] in ('numerical_stop', 'unresolved') and res[p]['log10Lambda'] is not None]
+    return dict(min_rematched=min(rem) if rem else None, min_stress=min(ok.values()) if ok else None,
+                complete=len(ok) == len(res), n_defined=len(ok), n_variants=len(res),
+                n_match_failed=sum(s == 'match_failed' for s in st.values()), n_start_fail=sum(s == 'boundary_failure' for s in st.values()),
+                n_numerical=sum(s in ('numerical_stop', 'unresolved') for s in st.values()), numerical_prefix_min=min(num) if num else None, variant_status=st)
 
 
 if __name__ == '__main__':

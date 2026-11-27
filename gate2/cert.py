@@ -39,6 +39,27 @@ def reach_class(cs, variants):
     return 'physical_failure'
 
 
+NUMERICAL_FAILS = ('integration', 'nonfinite')
+
+
+def variant_status(fail):
+    """classification of ONE variant from its first-failure string, with the same semantics as reach_class (single source of truth for validation drivers):
+    'boundary_failure' ('start:*'), 'match_failed', 'numerical_stop' (integration/nonfinite: a demonstrated prefix, never a cutoff), 'unresolved' (borderline BFB 'BFB?'),
+    'ceiling' (no failure up to 1e16 GeV) or 'physical_failure' (first crossing of BFB/unitarity/perturbativity/yukawa).  Only the last two carry a scale."""
+    f = None if fail is None else str(fail)
+    if f is None or f == 'None': return 'ceiling'
+    if f.startswith('start'): return 'boundary_failure'
+    if f == 'match_failed': return 'match_failed'
+    if f in NUMERICAL_FAILS: return 'numerical_stop'
+    if f == 'BFB?': return 'unresolved'
+    return 'physical_failure'
+
+
+def eligible(status):
+    """a variant result may enter a minimum / robust scale only if it is a physical first failure or a ceiling"""
+    return status in ('physical_failure', 'ceiling')
+
+
 def status_fields(cs, rc, logL, base):
     """(rg_status, baseline, meets_requested_cutoff, final_status) of a campaign record from the certified minimum cs, its reach class rc, the requested cutoff logL and the low-energy status base.
     logL < 0 is the low-energy baseline with the nominal boundary only: no cutoff comparison is made (the start-failure sentinel -1 is not a scale), and only a boundary failure fails it.
