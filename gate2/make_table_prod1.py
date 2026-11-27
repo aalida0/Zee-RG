@@ -70,4 +70,4 @@ row('\\quad with momentum-dependent matching ($h$ pole)', lambda n, r: ('11.4--1
 row('\\quad all six mixing prescriptions (defined variants)', lambda n, r: ('11.4--12.0' if n == 'BM1' else '11.5--12.5$^\\dagger$') if isold(n) else fmt_modes(n, ['full-sym', 'full-min', 'full-max', 'full-hpole-sym', 'full-hpole-min', 'full-hpole-max']))
 row('\\quad $h$-pole matching and all Yukawa couplings', lambda n, r: ('11.4--11.6' if n == 'BM1' else '11.5--12.0') if isold(n) else rng(yk(n, ['full-hpole-sym', 'full-hpole-min', 'full-hpole-max'])))
 row('first failure', lambda n, r: r['robustness']['default']['fail'])
-row('no deeper minimum found (1500 starts)', lambda n, r: 'EW' if r['robustness']['vacuum']['global_ok'] else 'not established')
+row('no deeper minimum found (1527 starts)', lambda n, r: 'EW' if r['robustness']['vacuum']['global_ok'] else 'not established')
