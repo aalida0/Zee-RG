@@ -1,0 +1,80 @@
+nohup: ignoring input
+[2026-11-26 17:45:33.665] [HiggsPredictions] [warning] Di-higgs non resonant ggF production cross section is not computed. No further warning will be printed.
+[2026-11-26 17:45:33.665] [HiggsPredictions] [warning] Di-higgs non resonant VBF production cross section is not computed. No further warning will be printed.
+{
+"max:h_tau_mu|10": {
+"jobs": 154,
+"complete": 153,
+"prop": 1231092,
+"acc": 284546,
+"stored": 0,
+"unique": 0,
+"wall": 197950.6439487934,
+"certs": 4180,
+"classes": {
+"TIMEOUT": 1,
+"COMPLETE_TARGET_SAMPLED": 151,
+"COMPLETE_NO_TARGET": 2
+},
+"never_in_target": 0,
+"no_records": 0,
+"no_best": 6,
+"hcoll_errors": 0,
+"job_wall_median": 1233.1978739500046,
+"job_wall_p95": 1982.4949638962744,
+"s_per_proposal_median": 0.15414973424375056,
+"s_per_proposal_p95": 0.2478118704870343
+},
+"max:h_tau_mu|12": {
+"jobs": 133,
+"complete": 122,
+"prop": 1055488,
+"acc": 162928,
+"stored": 0,
+"unique": 0,
+"wall": 201166.41896224022,
+"certs": 2217,
+"classes": {
+"COMPLETE_TARGET_SAMPLED": 85,
+"COMPLETE_NO_TARGET": 37,
+"TIMEOUT": 11
+},
+"never_in_target": 0,
+"no_records": 0,
+"no_best": 49,
+"hcoll_errors": 0,
+"job_wall_median": 1425.0846140384674,
+"job_wall_p95": 2400.3458873271943,
+"s_per_proposal_median": 0.17813557675480843,
+"s_per_proposal_p95": 0.3201471592152669
+},
+"max:h_tau_mu|14": {
+"jobs": 6,
+"complete": 6,
+"prop": 48000,
+"acc": 3849,
+"stored": 0,
+"unique": 0,
+"wall": 9101.934731721878,
+"certs": 38,
+"classes": {
+"COMPLETE_NO_TARGET": 4,
+"COMPLETE_TARGET_SAMPLED": 2
+},
+"never_in_target": 0,
+"no_records": 0,
+"no_best": 4,
+"hcoll_errors": 0,
+"job_wall_median": 1366.4887999296188,
+"job_wall_p95": 2087.8793187737465,
+"s_per_proposal_median": 0.17081109999120236,
+"s_per_proposal_p95": 0.2609849148467183
+},
+"max:h_tau_mu|8": {
+"jobs": 100,
+"complete": 87,
+"prop": 790287,
+"acc": 181502,
+"stored": 0,
+"uniqu
+verified 586 meet cutoff 550 finalists 59
