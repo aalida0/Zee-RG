@@ -23,8 +23,10 @@ row('$m_{h_1^+},\\ m_{h_2^+}$ [GeV]', lambda n, r: '%.0f, %.0f' % (r['masses']['
 row('$\\tan\\beta$, $c_{\\beta-\\alpha}$', lambda n, r: '%.2f, %.4f' % (r['tan_beta'], r['c_beta_alpha']))
 row('$\\cos\\varphi$, $\\mu/v$', lambda n, r: '%.2f, %.2f' % (np.cos(r['phi']), r['mu_over_v']))
 q = lambda r, ks: ', '.join('%.2f' % r['quartics'][k] for k in ks)
-row('$\\lambda_{1\\ldots5}$', lambda n, r: q(r, ['l1', 'l2', 'l3', 'l4', 'l5']))
-row('$\\lambda_{6\\ldots10},\\lambda_h$', lambda n, r: q(r, ['l6', 'l7', 'l8', 'l9', 'l10', 'lh']))
+row('$\\lambda_1,\\lambda_2,\\lambda_3$', lambda n, r: q(r, ['l1', 'l2', 'l3']))
+row('$\\lambda_4,\\lambda_5,\\lambda_6$', lambda n, r: q(r, ['l4', 'l5', 'l6']))
+row('$\\lambda_7,\\lambda_8,\\lambda_9$', lambda n, r: q(r, ['l7', 'l8', 'l9']))
+row('$\\lambda_{10},\\lambda_h$', lambda n, r: q(r, ['l10', 'lh']))
 row('$\\max|Y_2|$, $|f_{\\mu\\tau}|$', lambda n, r: '%.3f, %s' % (max(max(abs(a), abs(b)) for a, b in r['Y2'].values()), sci(abs(r['f']['mu_tau']))))
 print('\\midrule')
 for lab, k in (('$\\Br(\\mu\\to e\\gamma)$', 'mu_e_g'), ('$\\Br(\\tau\\to\\mu\\gamma)$', 'tau_mu_g'), ('$\\Br(\\tau\\to e\\gamma)$', 'tau_e_g'), ('$\\Br(\\mu\\to3e)$ (dipole)', 'mu_3e'), ('$|d_e|$ [$e$\\,cm]', 'd_e')):
@@ -35,7 +37,7 @@ row('$\\chi^2$ ($\\chi^2_{\\min}=%.2f$, limit $%.2f$)' % (B[names[0]]['chi2_min'
 row('$\\Delta\\chi^2_{\\rm HS}=\\chi^2_{\\rm HS}-%.2f$, HiggsBounds' % HSREF, lambda n, r: '%+.2f, %s' % (r['collider']['HS_chi2'] - HSREF, 'allowed' if r['collider']['HB_allowed'] else 'excluded'))
 row('$\\sum m_\\nu$ [eV], $\\sin^2\\theta_{23}$', lambda n, r: '%.4f, %.3f' % (r['neutrino']['sum_m'], r['neutrino']['s23sq']))
 row('$h_1^+$: BR($\\mu\\nu$), BR($\\tau\\nu$), BR($tb$)', lambda n, r: '%.3f, %.3f, %.3f' % (r['dy']['BR'][0]['munu'], r['dy']['BR'][0]['taunu'], r['dy']['BR'][0]['tb']))
-row('Drell--Yan screen (outside recast domain)', lambda n, r: r['dy']['status'])
+row('Drell--Yan screen', lambda n, r: r['dy']['status'])
 print('\\midrule')
 rb = lambda r, p: r['robustness'][p]['log10Lambda']
 row('$\\log_{10}(\\Lambda/\\mathrm{GeV})$, default inputs', lambda n, r: '%.2f' % rb(r, 'default'))
